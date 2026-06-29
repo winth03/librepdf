@@ -1,0 +1,10 @@
+lo.tar.br
+lo.tar
+instdir/
+node_modules/
+dist/
+test/fixtures/*
+fonts/*
+libreoffice-core
+
+!**/*/.gitkeep

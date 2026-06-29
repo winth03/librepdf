@@ -1,0 +1,174 @@
+--- a/comphelper/source/misc/configuration.cxx
++++ b/comphelper/source/misc/configuration.cxx
+@@ -41,11 +41,18 @@
+ OUString getDefaultLocale(
+     css::uno::Reference< css::uno::XComponentContext > const & context)
+ {
+-    return LanguageTag(
+-        css::uno::Reference< css::lang::XLocalizable >(
+-            css::configuration::theDefaultProvider::get(context),
+-            css::uno::UNO_QUERY_THROW)->
+-        getLocale()).getBcp47(false);
++    try
++    {
++        return LanguageTag(
++            css::uno::Reference< css::lang::XLocalizable >(
++                css::configuration::theDefaultProvider::get(context),
++                css::uno::UNO_QUERY_THROW)->
++            getLocale()).getBcp47(false);
++    }
++    catch (const css::uno::Exception &)
++    {
++        // Configuration not available
++    }
+ }
+ 
+ OUString extendLocalizedPath(std::u16string_view path, OUString const & locale) {
+@@ -70,25 +77,37 @@
+ comphelper::ConfigurationChanges::~ConfigurationChanges() {}
+ 
+ void comphelper::ConfigurationChanges::commit() const {
+-    access_->commitChanges();
++    if (access_.is())
++        access_->commitChanges();
+ }
+ 
+ comphelper::ConfigurationChanges::ConfigurationChanges(
+     css::uno::Reference< css::uno::XComponentContext > const & context):
+-    access_(
+-        css::configuration::ReadWriteAccess::create(
+-            context, getDefaultLocale(context)))
+-{}
++    access_()
++{
++    try
++    {
++        access_ = css::configuration::ReadWriteAccess::create(
++            context, getDefaultLocale(context));
++    }
++    catch (const css::uno::Exception &)
++    {
++        // Configuration not available
++    }
++}
+
+ void comphelper::ConfigurationChanges::setPropertyValue(
+     OUString const & path, css::uno::Any const & value) const
+ {
+-    access_->replaceByHierarchicalName(path, value);
++    if (access_.is())
++        access_->replaceByHierarchicalName(path, value);
+ }
+ 
+ css::uno::Reference< css::container::XHierarchicalNameReplace >
+ comphelper::ConfigurationChanges::getGroup(OUString const & path) const
+ {
++    if (!access_.is())
++        return css::uno::Reference< css::container::XHierarchicalNameReplace >();
+     return css::uno::Reference< css::container::XHierarchicalNameReplace >(
+         access_->getByHierarchicalName(path), css::uno::UNO_QUERY_THROW);
+ }
+@@ -96,6 +115,8 @@
+ css::uno::Reference< css::container::XNameContainer >
+ comphelper::ConfigurationChanges::getSet(OUString const & path) const
+ {
++    if (!access_.is())
++        return css::uno::Reference< css::container::XNameContainer >();
+     return css::uno::Reference< css::container::XNameContainer >(
+         access_->getByHierarchicalName(path), css::uno::UNO_QUERY_THROW);
+ }
+@@ -111,14 +132,25 @@
+ comphelper::detail::ConfigurationWrapper::ConfigurationWrapper(
+     css::uno::Reference<css::uno::XComponentContext> const & context):
+     context_(context.is() ? context : comphelper::getProcessComponentContext()),
+-    access_(css::configuration::ReadWriteAccess::create(context_, u"*"_ustr))
+-{}
++    access_()
++{
++    try
++    {
++        access_ = css::configuration::ReadWriteAccess::create(context_, u"*"_ustr);
++    }
++    catch (const css::uno::Exception &)
++    {
++        // Configuration not available
++    }
++}
+
+ comphelper::detail::ConfigurationWrapper::~ConfigurationWrapper() {}
+
+ bool comphelper::detail::ConfigurationWrapper::isReadOnly(OUString const & path)
+     const
+ {
++    if (!access_.is())
++        return false;
+     return
+         (access_->getPropertyByHierarchicalName(path).Attributes
+          & css::beans::PropertyAttribute::READONLY)
+@@ -127,6 +159,9 @@
+ 
+ css::uno::Any comphelper::detail::ConfigurationWrapper::getPropertyValue(std::u16string_view path) const
+ {
++    if (!access_.is())
++        return css::uno::Any();
++
+     // should be short-circuited in ConfigurationProperty::get()
+     assert(!comphelper::IsFuzzing());
+ 
+@@ -167,6 +202,8 @@
+ comphelper::detail::ConfigurationWrapper::getLocalizedPropertyValue(
+     std::u16string_view path) const
+ {
++    if (!access_.is())
++        return css::uno::Any();
+     return access_->getByHierarchicalName(
+         extendLocalizedPath(path, getDefaultLocale(context_)));
+ }
+@@ -183,11 +220,18 @@
+ comphelper::detail::ConfigurationWrapper::getGroupReadOnly(
+     OUString const & path) const
+ {
+-    return css::uno::Reference< css::container::XHierarchicalNameAccess >(
+-        (css::configuration::ReadOnlyAccess::create(
+-            context_, getDefaultLocale(context_))->
+-         getByHierarchicalName(path)),
+-        css::uno::UNO_QUERY_THROW);
++    try
++    {
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >(
++            (css::configuration::ReadOnlyAccess::create(
++                context_, getDefaultLocale(context_))->
++             getByHierarchicalName(path)),
++            css::uno::UNO_QUERY_THROW);
++    }
++    catch (const css::uno::Exception &)
++    {
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >();
++    }
+ }
+ 
+ css::uno::Reference< css::container::XHierarchicalNameReplace >
+@@ -203,11 +247,18 @@
+ comphelper::detail::ConfigurationWrapper::getSetReadOnly(
+     OUString const & path) const
+ {
+-    return css::uno::Reference< css::container::XNameAccess >(
+-        (css::configuration::ReadOnlyAccess::create(
+-            context_, getDefaultLocale(context_))->
+-         getByHierarchicalName(path)),
+-        css::uno::UNO_QUERY_THROW);
++    try
++    {
++        return css::uno::Reference< css::container::XNameAccess >(
++            (css::configuration::ReadOnlyAccess::create(
++                context_, getDefaultLocale(context_))->
++             getByHierarchicalName(path)),
++            css::uno::UNO_QUERY_THROW);
++    }
++    catch (const css::uno::Exception &)
++    {
++        return css::uno::Reference< css::container::XNameAccess >();
++    }
+ }
+ 
+ css::uno::Reference< css::container::XNameContainer >

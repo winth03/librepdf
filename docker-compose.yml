@@ -1,0 +1,12 @@
+services:
+  build:
+    build:
+      context: .
+      target: brotli
+      args:
+        BUNDLE_FONTS: "true"  # set to "false" to strip LO's built-in fonts (custom ./fonts/ always bundled)
+    volumes:
+      - .:/tmp/out
+    command: >
+      sh -c "cp /tmp/lo.tar.br /tmp/out/lo.tar.br &&
+             echo 'Built lo.tar.br (size: ' && ls -lh /tmp/out/lo.tar.br | awk '{print $5}' && echo ')'"

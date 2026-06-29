@@ -1,0 +1,72 @@
+diff --git a/unotools/source/i18n/localedatawrapper.cxx b/unotools/source/i18n/localedatawrapper.cxx
+index 51714d9d6..33e4e9e07 100644
+--- a/unotools/source/i18n/localedatawrapper.cxx
++++ b/unotools/source/i18n/localedatawrapper.cxx
+@@ -87,11 +87,19 @@ LocaleDataWrapper::LocaleDataWrapper(
+             )
+         :
+         m_xContext( rxContext ),
+-        xLD( LocaleData2::create(rxContext) ),
++        xLD(),
+         maLanguageTag(std::move( aLanguageTag ))
+ {
+-    loadData();
+-    loadDateAcceptancePatterns({});
++    try
++    {
++        xLD = LocaleData2::create(rxContext);
++        loadData();
++        loadDateAcceptancePatterns({});
++    }
++    catch (const Exception&)
++    {
++        TOOLS_WARN_EXCEPTION("unotools.i18n", "LocaleDataWrapper::LocaleDataWrapper");
++    }
+ }
+ 
+ LocaleDataWrapper::LocaleDataWrapper(
+@@ -100,11 +108,19 @@ LocaleDataWrapper::LocaleDataWrapper(
+             )
+         :
+         m_xContext( comphelper::getProcessComponentContext() ),
+-        xLD( LocaleData2::create(m_xContext) ),
++        xLD(),
+         maLanguageTag(std::move( aLanguageTag ))
+ {
+-    loadData();
+-    loadDateAcceptancePatterns(rOverrideDateAcceptancePatterns);
++    try
++    {
++        xLD = LocaleData2::create(m_xContext);
++        loadData();
++        loadDateAcceptancePatterns(rOverrideDateAcceptancePatterns);
++    }
++    catch (const Exception&)
++    {
++        TOOLS_WARN_EXCEPTION("unotools.i18n", "LocaleDataWrapper::LocaleDataWrapper");
++    }
+ }
+ 
+ LocaleDataWrapper::~LocaleDataWrapper()
+@@ -123,6 +139,8 @@ const css::lang::Locale& LocaleDataWrapper::getMyLocale() const
+ 
+ void LocaleDataWrapper::loadData()
+ {
++    if (!xLD.is())
++        return;
+     const css::lang::Locale& rMyLocale = maLanguageTag.getLocale();
+ 
+     {
+@@ -1508,6 +1526,12 @@ const css::uno::Sequence< OUString > & LocaleDataWrapper::getDateAcceptancePatte
+ void LocaleDataWrapper::loadDateAcceptancePatterns(
+         const std::vector<OUString> & rPatterns )
+ {
++    if (!xLD.is())
++    {
++        if (!rPatterns.empty())
++            aDateAcceptancePatterns = comphelper::containerToSequence(rPatterns);
++        return;
++    }
+     if (!aDateAcceptancePatterns.hasElements() || rPatterns.empty())
+     {
+         try

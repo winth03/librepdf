@@ -1,0 +1,42 @@
+diff --git a/comphelper/source/misc/backupfilehelper.cxx b/comphelper/source/misc/backupfilehelper.cxx
+index 53ef6da35..2fee8a4ae 100644
+--- a/comphelper/source/misc/backupfilehelper.cxx
++++ b/comphelper/source/misc/backupfilehelper.cxx
+@@ -384,7 +384,15 @@ namespace
+             // create content from current extension configuration
+             uno::Sequence< uno::Sequence< uno::Reference< deployment::XPackage > > > xAllPackages;
+             const uno::Reference< uno::XComponentContext >& xContext = ::comphelper::getProcessComponentContext();
+-            uno::Reference< deployment::XExtensionManager > m_xExtensionManager = deployment::ExtensionManager::get(xContext);
++            uno::Reference< deployment::XExtensionManager > m_xExtensionManager;
++            try
++            {
++                m_xExtensionManager = deployment::ExtensionManager::get(xContext);
++            }
++            catch (const uno::Exception &)
++            {
++                return;
++            }
+ 
+             try
+             {
+@@ -1643,6 +1651,8 @@ namespace comphelper
+ 
+     void BackupFileHelper::tryPushExtensionInfo()
+     {
++        try
++        {
+         // no push when SafeModeDir exists, it may be Office's exit after SafeMode
+         // where SafeMode flag is already deleted, but SafeModeDir cleanup is not
+         // done yet (is done at next startup)
+@@ -1652,6 +1662,12 @@ namespace comphelper
+ 
+             tryPush_extensionInfo(aPackURL);
+         }
++        }
++        catch (const css::uno::Exception&)
++        {
++            // Extension manager unavailable, skip
++        }
+     }
+ 
+     bool BackupFileHelper::isPopPossible()

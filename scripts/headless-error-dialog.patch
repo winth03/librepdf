@@ -1,0 +1,45 @@
+diff --git a/desktop/source/app/app.cxx b/desktop/source/app/app.cxx
+index b3712ac39..1cea3772c 100644
+--- a/desktop/source/app/app.cxx
++++ b/desktop/source/app/app.cxx
+@@ -402,8 +402,15 @@ void FatalError(const OUString& sMessage)
+     }
+ 
+     OUString sTitle = sProductKey + " - Fatal Error";
+-    Application::ShowNativeErrorBox (sTitle, sMessage);
+     std::cerr << sTitle << ": " << sMessage << std::endl;
++    try
++    {
++        Application::ShowNativeErrorBox(sTitle, sMessage);
++    }
++    catch (const css::uno::Exception&)
++    {
++        // Dialog not available
++    }
+     _exit(EXITHELPER_FATAL_ERROR);
+ }
+ 
+@@ -692,11 +699,19 @@ void Desktop::HandleBootstrapPathErrors( ::utl::Bootstrap::Status aBootstrapStat
+         aProductKey = aTemp;
+ 
+     OUString const aMessage(OUString::Concat(aDiagnosticMessage) + "\n");
++    std::cerr << aProductKey << ": " << aMessage << std::endl;
+ 
+-    std::unique_ptr<weld::MessageDialog> xBootstrapFailedBox(Application::CreateMessageDialog(nullptr,
+-                                                             VclMessageType::Warning, VclButtonsType::Ok, aMessage));
+-    xBootstrapFailedBox->set_title(aProductKey);
+-    xBootstrapFailedBox->run();
++    try
++    {
++        std::unique_ptr<weld::MessageDialog> xBootstrapFailedBox(Application::CreateMessageDialog(nullptr,
++                                                                 VclMessageType::Warning, VclButtonsType::Ok, aMessage));
++        xBootstrapFailedBox->set_title(aProductKey);
++        xBootstrapFailedBox->run();
++    }
++    catch (const css::uno::Exception&)
++    {
++        // Dialog not available
++    }
+ }
+ 
+ // Create an error message depending on bootstrap failure code and an optional file url

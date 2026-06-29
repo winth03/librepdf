@@ -1,0 +1,41 @@
+{
+  "name": "librepdf",
+  "version": "0.1.0",
+  "description": "Stripped LibreOffice for Node.js — document-to-PDF conversion",
+  "main": "dist/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winth03/librepdf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/winth03/librepdf/issues"
+  },
+  "homepage": "https://github.com/winth03/librepdf#readme",
+  "keywords": ["pdf", "libreoffice", "docx", "converter", "document-to-pdf"],
+  "author": "winth03",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "lo.tar.br"
+  ],
+  "scripts": {
+    "prepack": "tsc && test -f lo.tar.br || (echo 'lo.tar.br missing — run: docker compose run --rm build' && exit 1)",
+    "build": "docker compose run --rm build && tsc",
+    "test": "test/test-convert.sh",
+    "test:local": "node test/local-test.js",
+    "dev": "tsc --watch"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": [
+    "linux"
+  ],
+  "arch": [
+    "x64"
+  ],
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "typescript": "^6.0.3"
+  }
+}

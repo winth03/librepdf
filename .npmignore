@@ -1,0 +1,7 @@
+scripts
+test
+fonts
+Dockerfile
+docker-compose.yml
+tsconfig.json
+AGENTS.md

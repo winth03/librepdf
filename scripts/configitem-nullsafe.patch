@@ -1,0 +1,184 @@
+diff --git a/unotools/source/config/configitem.cxx b/unotools/source/config/configitem.cxx
+index cb552361d..64d91e089 100644
+--- a/unotools/source/config/configitem.cxx
++++ b/unotools/source/config/configitem.cxx
+@@ -149,10 +149,18 @@ ConfigItem::ConfigItem(OUString aSubTree, ConfigItemMode nSetMode ) :
+     if (comphelper::IsFuzzing())
+         return;
+ 
+-    if (nSetMode & ConfigItemMode::ReleaseTree)
+-        ConfigManager::getConfigManager().addConfigItem(*this);
+-    else
+-        m_xHierarchyAccess = ConfigManager::getConfigManager().addConfigItem(*this);
++    try
++    {
++        if (nSetMode & ConfigItemMode::ReleaseTree)
++            ConfigManager::getConfigManager().addConfigItem(*this);
++        else
++            m_xHierarchyAccess = ConfigManager::getConfigManager().addConfigItem(*this);
++    }
++    catch (const css::uno::Exception &)
++    {
++        // Configuration backend not available (headless serverless build).
++        // Operate without configuration access; default values will be used.
++    }
+ }
+ 
+ ConfigItem::ConfigItem(ConfigItem const &) = default;
+@@ -1170,7 +1178,16 @@ Reference< XHierarchicalNameAccess> ConfigItem::GetTree()
+     if (comphelper::IsFuzzing())
+         return xRet;
+     if(!m_xHierarchyAccess.is())
+-        xRet = ConfigManager::acquireTree(*this);
++    {
++        try
++        {
++            xRet = ConfigManager::acquireTree(*this);
++        }
++        catch (const css::uno::Exception &)
++        {
++            // Configuration backend not available, return null
++        }
++    }
+     else
+         xRet = m_xHierarchyAccess;
+     return xRet;
+diff --git a/unotools/source/config/configmgr.cxx b/unotools/source/config/configmgr.cxx
+index dfddca5f9..289e12343 100644
+--- a/unotools/source/config/configmgr.cxx
++++ b/unotools/source/config/configmgr.cxx
+@@ -73,15 +73,36 @@ OUString utl::ConfigManager::getAboutBoxProductVersion() {
+ }
+ 
+ OUString utl::ConfigManager::getAboutBoxProductVersionSuffix() {
+-    return officecfg::Setup::Product::ooSetupVersionAboutBoxSuffix::get();
++    try
++    {
++        return officecfg::Setup::Product::ooSetupVersionAboutBoxSuffix::get();
++    }
++    catch (const css::uno::Exception &)
++    {
++        return OUString();
++    }
+ }
+ 
+ OUString utl::ConfigManager::getDefaultCurrency() {
+-    return officecfg::Setup::L10N::ooSetupCurrency::get();
++    try
++    {
++        return officecfg::Setup::L10N::ooSetupCurrency::get();
++    }
++    catch (const css::uno::Exception &)
++    {
++        return OUString();
++    }
+ }
+ 
+ OUString utl::ConfigManager::getUILocale() {
+-    return officecfg::Setup::L10N::ooLocale::get();
++    try
++    {
++        return officecfg::Setup::L10N::ooLocale::get();
++    }
++    catch (const css::uno::Exception &)
++    {
++        return OUString();
++    }
+ }
+ 
+ OUString utl::ConfigManager::getWorkLocale() {
+@@ -97,7 +118,14 @@ OUString utl::ConfigManager::getProductName() {
+ }
+ 
+ OUString utl::ConfigManager::getProductVersion() {
+-    return officecfg::Setup::Product::ooSetupVersion::get();
++    try
++    {
++        return officecfg::Setup::Product::ooSetupVersion::get();
++    }
++    catch (const css::uno::Exception &)
++    {
++        return OUString();
++    }
+ }
+ 
+ OUString utl::ConfigManager::getVendor() {
+@@ -118,15 +146,22 @@ utl::ConfigManager::acquireTree(utl::ConfigItem const & item) {
+     css::uno::Sequence< css::uno::Any > args{ css::uno::Any(css::beans::NamedValue(
+         u"nodepath"_ustr,
+         css::uno::Any("/org.openoffice." + item.GetSubTreeName()))) };
+-    if (item.GetMode() & ConfigItemMode::AllLocales) {
+-        args.realloc(2);
+-        args.getArray()[1] <<= css::beans::NamedValue(u"locale"_ustr, css::uno::Any(u"*"_ustr));
++    try
++    {
++        if (item.GetMode() & ConfigItemMode::AllLocales) {
++            args.realloc(2);
++            args.getArray()[1] <<= css::beans::NamedValue(u"locale"_ustr, css::uno::Any(u"*"_ustr));
++        }
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >(
++            getConfigurationProvider()->createInstanceWithArguments(
++                u"com.sun.star.configuration.ConfigurationUpdateAccess"_ustr,
++                args),
++            css::uno::UNO_QUERY_THROW);
++    }
++    catch (const css::uno::Exception &)
++    {
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >();
+     }
+-    return css::uno::Reference< css::container::XHierarchicalNameAccess >(
+-        getConfigurationProvider()->createInstanceWithArguments(
+-            u"com.sun.star.configuration.ConfigurationUpdateAccess"_ustr,
+-            args),
+-        css::uno::UNO_QUERY_THROW);
+ }
+ 
+ css::uno::Reference< css::container::XHierarchicalNameAccess >
+@@ -134,11 +169,18 @@ utl::ConfigManager::acquireTree(std::u16string_view rSubTreeName) {
+     css::uno::Sequence< css::uno::Any > args{ css::uno::Any(css::beans::NamedValue(
+         u"nodepath"_ustr,
+         css::uno::Any(OUString::Concat(u"/org.openoffice.") + rSubTreeName))) };
+-    return css::uno::Reference< css::container::XHierarchicalNameAccess >(
+-        getConfigurationProvider()->createInstanceWithArguments(
+-            u"com.sun.star.configuration.ConfigurationUpdateAccess"_ustr,
+-            args),
+-        css::uno::UNO_QUERY_THROW);
++    try
++    {
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >(
++            getConfigurationProvider()->createInstanceWithArguments(
++                u"com.sun.star.configuration.ConfigurationUpdateAccess"_ustr,
++                args),
++            css::uno::UNO_QUERY_THROW);
++    }
++    catch (const css::uno::Exception &)
++    {
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >();
++    }
+ }
+ 
+ utl::ConfigManager::ConfigManager() {}
+@@ -149,11 +191,18 @@ utl::ConfigManager::~ConfigManager() {
+ 
+ css::uno::Reference< css::container::XHierarchicalNameAccess >
+ utl::ConfigManager::addConfigItem(utl::ConfigItem & item) {
+-    RegisterConfigItemHelper reg(*this, item);
+-    css::uno::Reference< css::container::XHierarchicalNameAccess > tree(
+-        acquireTree(item));
+-    reg.keep();
+-    return tree;
++    try
++    {
++        RegisterConfigItemHelper reg(*this, item);
++        css::uno::Reference< css::container::XHierarchicalNameAccess > tree(
++            acquireTree(item));
++        reg.keep();
++        return tree;
++    }
++    catch (const css::uno::Exception &)
++    {
++        return css::uno::Reference< css::container::XHierarchicalNameAccess >();
++    }
+ }
+ 
+ void utl::ConfigManager::removeConfigItem(utl::ConfigItem & item) {
