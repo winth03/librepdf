@@ -4,7 +4,11 @@ instdir/
 node_modules/
 dist/
 test/fixtures/*
-fonts/*
+!test/fixtures/.gitkeep
+!test/fixtures/fonts/
+test/fixtures/fonts/*
+!test/fixtures/fonts/.gitkeep
+# fonts/ is now tracked — font files committed to repo
 libreoffice-core
 
 !**/*/.gitkeep

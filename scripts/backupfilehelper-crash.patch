@@ -28,7 +28,7 @@ index 53ef6da35..2fee8a4ae 100644
          // no push when SafeModeDir exists, it may be Office's exit after SafeMode
          // where SafeMode flag is already deleted, but SafeModeDir cleanup is not
          // done yet (is done at next startup)
-@@ -1652,6 +1662,12 @@ namespace comphelper
+@@ -1652,6 +1662,11 @@ namespace comphelper
  
              tryPush_extensionInfo(aPackURL);
          }

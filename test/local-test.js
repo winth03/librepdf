@@ -2,11 +2,13 @@ const path = require('path');
 const { convert } = require(path.join(__dirname, '..', 'dist', 'index.js'));
 const { readFileSync, writeFileSync } = require('fs');
 
-async function main() {
-  const docx = readFileSync(path.join(__dirname, 'fixtures', 'permit.docx'));
-  console.log('Converting permit.docx (%d bytes)...', docx.length);
+const FIXTURES = path.join(__dirname, 'fixtures');
 
-  const pdf = await convert(docx);
+async function main() {
+  const docx = readFileSync(path.join(FIXTURES, 'test.docx'));
+  console.log('Converting test.docx (%d bytes)...', docx.length);
+
+  const pdf = await convert(docx, { fonts: path.join(FIXTURES, 'fonts') });
   console.log('Got PDF: %d bytes', pdf.length);
 
   writeFileSync('/tmp/test-output.pdf', pdf);

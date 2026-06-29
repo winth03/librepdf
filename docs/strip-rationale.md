@@ -384,8 +384,11 @@ not through the GUI.
 
 ### Custom fonts injection
 
-`./fonts/` is a gitignored directory where users place `.ttf`/`.otf` files
+`./fonts/` is a tracked directory where users place `.ttf`/`.otf` files
 before building. These are copied into `share/fonts/` in the stripped instdir.
+At runtime, the `convert()` `fonts` option allows injecting additional font
+files or directories on the fly — they are copied into `share/fonts/custom/`
+before each conversion.
 A `fonts.conf` is generated that registers this directory with fontconfig
 using `prefix="relative"`, resolving `.` relative to the config file's
 directory. At runtime, `FONTCONFIG_FILE=<instdir>/share/fonts/fonts.conf`

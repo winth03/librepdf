@@ -1,7 +1,7 @@
 # librepdf — Stripped LibreOffice for Node.js
 
 ## Goal
-Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librepdf`) that converts Writer documents (docx, txt, html) to PDF server-side.
+Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librepdf`) that converts Writer documents (docx, txt, html) to PDF server-side. Calc and Impress conversion is not supported.
 
 ## Constraints
 - **Size target:** ~50 MB compressed (brotli). Uncompressed must fit 250 MB limit.
@@ -20,11 +20,12 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - Brotli-compress the stripped `instdir/` into `lo.tar.br`.
 
 ### Node.js library
-- `src/index.ts` — exports `convert(input: Buffer): Promise<Buffer>`. Decompresses `lo.tar.br` on cold start, spawns `soffice --headless --convert-to pdf`, returns the PDF buffer.
+- `src/index.ts` — exports `convert(input: Buffer, options?): Promise<Buffer>`. Decompresses `lo.tar.br` on cold start, spawns `soffice --headless --convert-to pdf`, returns the PDF buffer. Accepts an optional `fonts` option to inject custom `.ttf`/`.otf` files or directories at runtime.
 - `dist/` — compiled output (run `tsc`).
 - `HOME=/tmp` and `FONTCONFIG_FILE=<instdir>/share/fonts/fonts.conf` set internally.
 - **CRITICAL (font discovery):** fontconfig does NOT scan LO's `share/fonts/` directory on Linux. The `fonts.conf` (created by `strip-libreoffice.sh` at build time) ships inside `lo.tar.br`. No file copying or `fc-cache` needed.
-- **Fonts folder (`fonts/`):** Drop your own `.ttf`/`.otf` files here before building. They get bundled into the stripped instdir and registered via the embedded `fonts.conf`. The folder is gitignored — seed it with any fonts your documents depend on.
+- **Fonts folder (`fonts/`):** Drop your own `.ttf`/`.otf` files here before building. They get bundled into the stripped instdir and registered via the embedded `fonts.conf`. The folder is tracked in git — seed it with any fonts your documents depend on.
+- **Runtime font injection (`convert()` `fonts` option):** Pass paths to `.ttf`/`.otf` files or directories to inject at runtime. They are copied into `share/fonts/custom/` before each conversion and discovered by the existing `fonts.conf` automatically.
 - **Custom fonts (`./fonts/`):** LibreOffice is built with `--without-fonts`, so its built-in Liberation fonts are never installed into `instdir`. Drop your own `.ttf`/`.otf` files in `fonts/` before building; they are bundled into the stripped instdir and registered via the embedded `fonts.conf` (see "Font discovery quirk" below) — unconditionally.
 
 ## Iteration workflow
@@ -38,8 +39,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 | `Dockerfile` | Multi-stage build (AL2023 → compile → strip → brotli) |
 | `docker-compose.yml` | `docker compose build --progress=plain 2>&1 > /tmp/build.log` to build. `docker compose run --rm build` to extract `lo.tar.br` |
 | `scripts/strip-libreoffice.sh` | Post-build pruning commands (fast-iteration — Dockerfile only COPYs this script) |
-| `test/test-convert.sh` | Smoke test on stripped bundle |
-| `test/test-thai.sh` | Thai text conversion test (registers fonts with fontconfig, converts, validates Thai chars in PDF) |
+| `test/local-test.js` / `npm run test:local` | End-to-end test using the Node.js library (decompress → convert docx/txt → verify PDF) |
 | `scripts/smoke-test.sh` | Quick PDF-existence check (non-fatal, ignores exit code) |
 | `src/index.ts` | Library entry point |
 
@@ -69,7 +69,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - Locale: liblocaledata_euro.so, liblocaledata_others.so, liblocaledata_es.so (only en/th kept), autocorr/, numbertext/
 - Skia: --disable-skia at configure time (eliminates libskialo.so entirely)
 - Thai locale: separate liblocaledata_th.so extracted via build-time patch (th-localedata.patch)
-- Fonts: bundled Liberation fonts removed, custom THSarabunIT9 fonts injected
+- Fonts: bundled Liberation fonts removed, THSarabunNew bundled as default
 - Python scripting: LibreLogo removed
 - Math: smath wrapper removed
 
@@ -103,7 +103,7 @@ RUN cd /tmp/libreoffice && patch -p1 < backupfilehelper-crash.patch && rm backup
 The patch wraps the `ExtensionManager::get()` call in an inner try-catch and returns early on failure. This requires a rebuild (invalidates the `make` cache layer).
 
 ## Font discovery quirk (critical)
-fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fontconfig for font resolution. THSarabunIT9 fonts are present in the stripped instdir at `share/fonts/THSarabunIT9/`, but LO cannot find them unless they are also registered with fontconfig.
+fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fontconfig for font resolution. THSarabunNew fonts are present in the stripped instdir at `share/fonts/THSarabunNew/`, but LO cannot find them unless they are also registered with fontconfig.
 
 **Fix (build-time, `scripts/strip-libreoffice.sh`):** A `share/fonts/fonts.conf` is written into the instdir that registers `share/fonts/` with fontconfig using a relative path:
 
@@ -111,7 +111,7 @@ fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fo
 <dir prefix="relative">.</dir>
 ```
 
-`prefix="relative"` resolves `.` relative to the config file's directory, so fontconfig recursively scans `share/fonts/` and discovers THSarabunIT9.
+`prefix="relative"` resolves `.` relative to the config file's directory, so fontconfig recursively scans `share/fonts/` and discovers all bundled fonts (including any injected at runtime into `share/fonts/custom/`).
 
 **Runtime (src/index.ts):** Set `FONTCONFIG_FILE=<instdir>/share/fonts/fonts.conf` in the soffice process environment. No file copying, no `fc-cache`.
 
@@ -130,7 +130,6 @@ fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fo
 | `headless-error-dialog.patch` | Wraps `FatalError`/`HandleBootstrapPathErrors` dialog creation in try-catch so headless builds don't crash on GUI error dialogs | `desktop/source/app/app.cxx` |
 
 ## Verification
-- `test/test-convert.sh` converts .txt, .html → valid PDF.
-- `test/test-thai.sh` converts .docx (Writer format) with TH SarabunIT9 font → PDF with embedded Thai glyphs.
+- `npm run test:local` converts test.docx and .txt → valid PDF.
 - Compressed bundle ≤ 50 MB.
 - Cold-start unpack ≤ 3 seconds.

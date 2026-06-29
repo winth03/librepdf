@@ -21,7 +21,7 @@
   "scripts": {
     "prepack": "tsc && test -f lo.tar.br || (echo 'lo.tar.br missing — run: docker compose run --rm build' && exit 1)",
     "build": "docker compose run --rm build && tsc",
-    "test": "test/test-convert.sh",
+    "test": "npm run test:local",
     "test:local": "node test/local-test.js",
     "dev": "tsc --watch"
   },

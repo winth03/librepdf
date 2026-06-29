@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, statSync, readdirSync, copyFileSync } from 'fs';
 import { spawn, execSync } from 'child_process';
-import { join } from 'path';
+import { join, basename } from 'path';
 import { brotliDecompressSync } from 'zlib';
 
 let initialized = false;
@@ -56,7 +56,8 @@ function detectExt(input: Buffer): string {
 }
 
 export interface ConvertOptions {
-  from?: 'docx' | 'xlsx' | 'pptx' | 'html' | 'txt';
+  from?: 'docx' | 'html' | 'txt';
+  fonts?: string | string[];
 }
 
 export function convert(
@@ -72,6 +73,24 @@ export function convert(
   const outputPath = join('/tmp', `input_${suffix}.pdf`);
 
   writeFileSync(inputPath, buf);
+
+  if (_options?.fonts) {
+    const customDir = join(LO_DIR, 'share/fonts/custom');
+    mkdirSync(customDir, { recursive: true });
+    const paths = Array.isArray(_options.fonts) ? _options.fonts : [_options.fonts];
+    for (const fp of paths) {
+      const st = statSync(fp);
+      if (st.isDirectory()) {
+        for (const f of readdirSync(fp)) {
+          if (f.endsWith('.ttf') || f.endsWith('.otf')) {
+            copyFileSync(join(fp, f), join(customDir, f));
+          }
+        }
+      } else if (st.isFile()) {
+        copyFileSync(fp, join(customDir, basename(fp)));
+      }
+    }
+  }
 
   return new Promise((resolve, reject) => {
     let stderr = '';
