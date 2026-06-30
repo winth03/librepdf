@@ -1,6 +1,6 @@
 {
   "name": "librepdf",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Stripped LibreOffice for Node.js — document-to-PDF conversion",
   "main": "dist/index.js",
   "repository": {
@@ -34,6 +34,9 @@
   "arch": [
     "x64"
   ],
+  "dependencies": {
+    "tar": "^7"
+  },
   "devDependencies": {
     "@types/node": "^26.0.1",
     "typescript": "^6.0.3"
