@@ -10,5 +10,6 @@ test/fixtures/fonts/*
 !test/fixtures/fonts/.gitkeep
 # fonts/ is now tracked — font files committed to repo
 libreoffice-core
+*.tgz
 
 !**/*/.gitkeep

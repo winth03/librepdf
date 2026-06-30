@@ -103,7 +103,7 @@ export function convert(
       env: {
         HOME: '/tmp',
         FONTCONFIG_FILE: FONTCONFIG,
-        URE_BOOTSTRAP: `file://${LO_PROGRAM}/services.rdb`,
+        URE_BOOTSTRAP: `file://${LO_PROGRAM}/fundamentalrc`,
         PATH: process.env.PATH || '/usr/bin:/bin',
         LD_LIBRARY_PATH: LO_PROGRAM,
       },
@@ -125,15 +125,15 @@ export function convert(
       settled = true;
       clearTimeout(timer);
       try {
-        if (signal) {
+        if (existsSync(outputPath)) {
+          resolve(readFileSync(outputPath));
+        } else if (signal) {
           reject(new Error(`soffice killed by signal ${signal}`));
         } else if (code !== 0) {
           const msg = stderr
             ? `soffice exited with code ${code}: ${stderr.trim().split('\n').pop()}`
             : `soffice exited with code ${code}`;
           reject(new Error(msg));
-        } else if (existsSync(outputPath)) {
-          resolve(readFileSync(outputPath));
         } else {
           reject(new Error('soffice did not produce an output PDF'));
         }
