@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync, statSync, readdirSync, copyFileSync } from 'fs';
-import { spawn, execSync } from 'child_process';
+import { spawn } from 'child_process';
 import { join, basename } from 'path';
 import { brotliDecompressSync } from 'zlib';
+import { x as extractTar } from 'tar';
 
 let initialized = false;
 const LO_DIR = '/tmp/instdir';
@@ -23,21 +24,17 @@ function findTarBr(): string {
   throw new Error('lo.tar.br not found');
 }
 
-function ensureLO(): void {
+async function ensureLO(): Promise<void> {
   if (initialized) return;
   if (existsSync(SENTINEL)) { initialized = true; return; }
-  try {
-    const buf = readFileSync(findTarBr());
-    const tmpTar = '/tmp/lo.tar';
-    writeFileSync(tmpTar, brotliDecompressSync(buf));
-    execSync(`tar -xf "${tmpTar}" -C /tmp`, { stdio: 'pipe' });
-    try { unlinkSync(tmpTar); } catch { /* ignore */ }
-    if (!existsSync(SOFFICE)) throw new Error('soffice binary not found after extraction');
-    try { writeFileSync(SENTINEL, ''); } catch { /* ignore */ }
-    initialized = true;
-  } catch (e) {
-    throw e;
-  }
+  const buf = readFileSync(findTarBr());
+  const tmpTar = '/tmp/lo.tar';
+  writeFileSync(tmpTar, brotliDecompressSync(buf));
+  await extractTar({ file: tmpTar, C: '/tmp' });
+  try { unlinkSync(tmpTar); } catch { /* ignore */ }
+  if (!existsSync(SOFFICE)) throw new Error('soffice binary not found after extraction');
+  try { writeFileSync(SENTINEL, ''); } catch { /* ignore */ }
+  initialized = true;
 }
 
 function detectExt(input: Buffer): string {
@@ -61,11 +58,11 @@ export interface ConvertOptions {
   fonts?: string | string[];
 }
 
-export function convert(
+export async function convert(
   input: Buffer | Uint8Array,
   _options?: ConvertOptions
 ): Promise<Buffer> {
-  ensureLO();
+  await ensureLO();
 
   const buf = Buffer.from(input);
   const ext = _options?.from ? `.${_options.from}` : detectExt(buf);

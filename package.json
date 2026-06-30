@@ -11,7 +11,13 @@
     "url": "https://github.com/winth03/librepdf/issues"
   },
   "homepage": "https://github.com/winth03/librepdf#readme",
-  "keywords": ["pdf", "libreoffice", "docx", "converter", "document-to-pdf"],
+  "keywords": [
+    "pdf",
+    "libreoffice",
+    "docx",
+    "converter",
+    "document-to-pdf"
+  ],
   "author": "winth03",
   "types": "dist/index.d.ts",
   "files": [
