@@ -15,6 +15,7 @@ function findTarBr(): string {
     join(__dirname, '..', 'lo.tar.br'),
     join(__dirname, '..', '..', 'lo.tar.br'),
     join(process.cwd(), 'lo.tar.br'),
+    join(process.cwd(), 'node_modules', 'librepdf', 'lo.tar.br'),
   ];
   for (const p of candidates) {
     if (existsSync(p)) return p;
