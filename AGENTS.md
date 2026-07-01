@@ -129,6 +129,12 @@ fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fo
 | `localedatawrapper-nullsafe.patch` | Null-safe `LocaleDataWrapper` constructor | `unotools/source/i18n/localedatawrapper.cxx` |
 | `headless-error-dialog.patch` | Wraps `FatalError`/`HandleBootstrapPathErrors` dialog creation in try-catch so headless builds don't crash on GUI error dialogs | `desktop/source/app/app.cxx` |
 
+## Git conventions
+- **Commit messages:** Use [Conventional Commits](https://www.conventionalcommits.org/) format: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.
+- Scope is optional. Body paragraphs wrapped at 72 chars.
+- Commit related changes together; avoid tiny granular commits.
+- Never force-push to shared branches.
+
 ## Verification
 - `npm run test:local` converts test.docx and .txt → valid PDF.
 - Compressed bundle ~50 MB (brotli).
