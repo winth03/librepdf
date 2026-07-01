@@ -13,7 +13,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 
 ### Build (compile from source)
 - Docker multi-stage build on `amazonlinux:2023` (AL2023).
-- LibreOffice 25.8 (Still/LTS branch) — source from `core/libreoffice-25.8.6.tar.gz`.
+- LibreOffice 26.2.4.2 — source from `core/libreoffice-26.2.4.2.tar.xz`.
 - `make` (~30 min – 2 hr on a beefy machine).
 - ICU data (`libicudata.so`) stripped post-build via `icupkg + pkgdata` in `strip-libreoffice.sh` — rebuilds `.so` with only `en` + `th` locale data, shrinking from 31 MB to ~2 MB.
 - Post-build: `strip --strip-unneeded` on .so files, run `scripts/strip-libreoffice.sh` which removes DB libs, import filters, Math, Reports, Writer UI, UI config for removed modules, locale data, bundled fonts, etc.
@@ -43,39 +43,39 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 | `scripts/smoke-test.sh` | Quick PDF-existence check (non-fatal, ignores exit code) |
 | `src/index.ts` | Library entry point |
 
-## Current size progress
-| Iteration | Uncompressed | brotli--best | Target |
-|---|---|---|---|
-| Baseline | 383 MB | ~93 MB | 50 MB |
-| After R1 (DB/search/Math/Report libs) | 315 MB | ~77 MB | 50 MB |
-| After R2 (import filters) | 288 MB | ~70 MB | 50 MB |
-| After R3 (UI config, locale, fonts, Writer UI) | 260 MB | ~63 MB | 50 MB |
-| After ICU strip (en+th only, 31 MB→2.1 MB) | 233 MB | ~59 MB | 50 MB |
-| After R4 (aggressive strip — DB, UI, locale, Skia, Thai patch, ICU strip) | 207 MB | ~55 MB | 50 MB |
-| After R5 (all 7 crash patches applied, clean exit 0) | 218 MB | ~59 MB | 50 MB |
-
 ## Known safe removals in strip-libreoffice.sh
-- ICU data: `libicudata.so` rebuilt via `icupkg + pkgdata` keeping only `en` + `th` locale data (31 MB → ~2 MB)
-- DB libs: libdbalo, libfbclient, all postgres/mysql/firebird/hsqldb connectors, plus odbclo, fbintl, sdbc2, sdbtlo, dbplo, dbpool2
+- ICU data: `libicudata.so` rebuilt via `icupkg + pkgdata` keeping only `en` + `th` locale data (31 MB → 15 MB, partial strip due to LO 26.2 data layout)
+- DB libs: libdbalo, libfbclient, all postgres/mysql/firebird/hsqldb connectors, plus odbclo, fbintl, sdbc2, sdbtlo, dbplo, dbpool2, evoab, calclo, hsqldb, macab, ado
 - Search: libclucene (HARD LINKED — cannot remove)
 - CMIS, Math, Report builder, Personalization libs
-- Import filters: mwaw (Mac), etonyek (iWork), staroffice, wps, wpd, wpftwriter, hwp, writerperfect, t602, pdfimport
-- Writer UI lib: libswuilo (headless safe)
+- Math: libsmlo.so, libsmdlo.so, smath wrapper
+- Chart: libchart2lo.so, libchart2apilo.so
+- Canvas: all canvas libs (cairo, vcl, simple, ogl, mtf, etc.)
+- Import filters: mwaw (Mac), etonyek (iWork), staroffice, wps, wpd, wpftwriter, hwp, writerperfect, t602, pdfimport, wpg, orcus, orcus-parser
+- Writer UI lib: libswuilo.so (headless safe)
 - PDFium lib: libpdfiumlo (HARD LINKED — cannot remove, used by export too)
-- Non-essential filters: libsvgfilterlo, libfilelo
-- Rare/unused modules: biblo, calclo, pricinglo, solverlo, scnlo, loglo, textconversiondlgslo, deploymentgui, ucpchelp1, scriptframe, pyuno, migrationoo2/3, rptxmllo, abplo, mozbootstraplo, cmdmaillo, unopkgapp, analysislo
+- Non-essential filters: libsvgfilterlo, libfilelo, librevenge, libodfgen
+- Rare/unused modules: biblo, pricinglo, solverlo, scnlo, loglo, textconversiondlgslo, deploymentgui, ucpchelp1, scriptframe, pyuno, migrationoo2/3, rptxmllo, abplo, mozbootstraplo, cmdmaillo, unopkgapp, analysislo, LanguageTool, guesslang, lnth, numbertext, spell, hyphen
+- VBA support: libvbaswobjlo.so, libmsformslo.so
+- Scripting: basprov, dlgprov, protocolhandler, stringresource
+- GPU/Crypto: libepoxy.so, libgpgmepp.so, libraptor2.so, librasqal.so, librdf.so, libclewlo.so, libopencllo.so
+- Java/.NET: libjava_uno.so, javaloader, javavm, jvmaccess, jvmfwk, cli_uno, net_uno, net_bootstrap
 - Writer UI config (notebookbar, menus, toolbars, statusbar) — not needed in headless
 - UI config modules: scalc, simpess, sdraw, schart, smath, dbaccess+dbreport+dbapp, BasicIDE, sbibliography, sabpilot, swform, sweb, swxform, swreport, sglobal
 - Locale: liblocaledata_euro.so, liblocaledata_others.so, liblocaledata_es.so (only en/th kept), autocorr/, numbertext/
 - Skia: --disable-skia at configure time (eliminates libskialo.so entirely)
 - Thai locale: separate liblocaledata_th.so extracted via build-time patch (th-localedata.patch)
 - Fonts: bundled Liberation fonts removed, THSarabunNew bundled as default
-- Python scripting: LibreLogo removed
+- Python scripting: LibreLogo, pyuno removed
 - Math: smath wrapper removed
+- Phase 2b libs (safe, not ldd-linked): libproxyfaclo.so, libscdlo.so, libsddlo.so, libsrtrs1.so, libcached1.so, libctllo.so, libdatelo.so, libucpimagelo.so, libucpexpand1lo.so, libucpextlo.so, libbasctllo.so, libswuilo.so, libsal_textenclo.so, libstoragefdlo.so, libswdlo.so, libbinaryurplo.so, libfsstoragelo.so, libiolo.so, liblocalebe1lo.so, libdeployment.so, libdesktopbe1lo.so, libucphier1.so, libucppkg1.so, libucptdoc1lo.so, libbootstraplo.so
+- xpdfimport binary: program/xpdfimport + share/xpdfimport
+- Runtime keep-list (19 libs): libfilelo, libswlo, libsw_writerfilterlo, libmswordlo, libooxlo, libpdffilterlo, libfilterconfiglo, liblocaledata_en, liblocaledata_th, libi18npoollo, libgraphicfilterlo, libmsfilterlo, libfrmlo, libsfxlo, libsvllo, libsvtlo, libsvxlo, libsvxcorelo
+- ICU stripping: dynamic path search using `find` for LO 26.2 (hardcoded icudt77l path was wrong for ICU 78)
 
 ## Known crashes (startup + shutdown)
 
-LO built with `--disable-gui` and no config backend crashes in two phases, both fixed by source patches applied before `./configure`. All six patches in the table below are mandatory — the build's smoke test fails at exit 134 without them.
+LO built with `--disable-gui` and no config backend crashes in two phases, both fixed by source patches applied before `./configure`. All seven patches in the table below are mandatory — the build's smoke test fails at exit 134 without them.
 
 **Startup crash** — `soffice.bin` aborts (SIGABRT, exit 134) on first run before any conversion. Stack: `soffice_main → ImplSVMain → InitVCL → Translate::Create("dkt") → SvtSysLocale → SvtSysLocaleOptions → utl::ConfigItem ctor → utl::ConfigManager::addConfigItem → acquireTree → createInstanceWithArguments` throws `DeploymentException` (no config backend) → `std::terminate`. Root cause: `utl::ConfigItem::ConfigItem` calls `ConfigManager::addConfigItem` outside a try-catch, propagating through the constructor.
 
@@ -131,5 +131,5 @@ fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fo
 
 ## Verification
 - `npm run test:local` converts test.docx and .txt → valid PDF.
-- Compressed bundle ≤ 50 MB.
+- Compressed bundle ~50 MB (brotli).
 - Cold-start unpack ≤ 3 seconds.

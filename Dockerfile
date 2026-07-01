@@ -2,8 +2,8 @@ FROM amazonlinux:2023 AS lobuild
 
 ENV LC_CTYPE=C.utf8
 ENV LC_ALL=C.utf8
-ENV LIBREOFFICE_VERSION=25.8.6.2
-ENV SOURCE_URL=https://download.documentfoundation.org/libreoffice/src/25.8.6/libreoffice-${LIBREOFFICE_VERSION}.tar.xz
+ENV LIBREOFFICE_VERSION=26.2.4.2
+ENV SOURCE_URL=https://download.documentfoundation.org/libreoffice/src/26.2.4/libreoffice-${LIBREOFFICE_VERSION}.tar.xz
 
 # Install build dependencies
 RUN dnf install -y dnf-plugins-core && \
@@ -58,7 +58,9 @@ RUN dnf install -y dnf-plugins-core && \
         openssl-devel \
         perl-Digest-MD5 \
         perl-Digest-SHA \
+        perl-FindBin \
         perl-lib \
+        perl-Time-Piece \
         pkgconfig \
         python3-devel \
         shadow-utils \
@@ -110,7 +112,6 @@ RUN CC=gcc14-gcc CXX=gcc14-g++ ./configure \
     --disable-dconf \
     --disable-dependency-tracking \
     --disable-dbgutil \
-    --disable-avmedia \
     --disable-extensions \
     --disable-gen \
     --disable-gio \
@@ -134,12 +135,12 @@ RUN CC=gcc14-gcc CXX=gcc14-g++ ./configure \
     --disable-sdremote \
     --disable-sdremote-bluetooth \
     --disable-skia \
-    --enable-mergelibs \
+    --disable-mergelibs \
     --with-galleries="no" \
-    --with-system-curl \
+    --without-system-curl \
     --with-system-expat \
     --with-system-nss \
-    --with-system-openssl \
+    --without-system-openssl \
     --with-theme="no" \
     --without-export-validation \
     --without-fonts \
@@ -163,6 +164,10 @@ COPY ./fonts /tmp/fonts
 COPY ./scripts/strip-libreoffice.sh /tmp/strip-libreoffice.sh
 RUN bash /tmp/strip-libreoffice.sh /tmp/libreoffice/instdir && \
     tar -cf /tmp/lo.tar -C /tmp/libreoffice instdir/ && \
+    echo "=== Largest .so files ===" && \
+    du -sh /tmp/libreoffice/instdir/program/lib*.so 2>/dev/null | sort -rh | head -30 && \
+    echo "=== Biggest non-.so files ===" && \
+    find /tmp/libreoffice/instdir -not -name '*.so' -not -name '*.so.*' -type f -size +1M -exec du -h {} \; 2>/dev/null | sort -rh | head -20 && \
     echo "=== Diagnostics ===" && \
     ls -la /tmp/libreoffice/instdir/program/liblocaledata_th* 2>/dev/null || echo "localedata_th.so: MISSING" && \
     strings /tmp/libreoffice/instdir/program/services/services.rdb 2>/dev/null | grep -i localedata || echo "localedata in rdb: none found" && \
@@ -170,7 +175,7 @@ RUN bash /tmp/strip-libreoffice.sh /tmp/libreoffice/instdir && \
 
 # Smoke test with GDB
 USER root
-RUN dnf install -y gdb && dnf clean all
+RUN dnf install -y gdb strace && dnf clean all
 USER builder
 COPY ./scripts/smoke-test.sh /tmp/smoke-test.sh
 RUN bash /tmp/smoke-test.sh /tmp/libreoffice/instdir

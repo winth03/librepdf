@@ -18,7 +18,7 @@ state only what it does.
 | `--disable-dconf` | dconf configuration – desktop-only |
 | `--disable-dependency-tracking` | Speeds up configure; build is one-shot, no incremental deps needed |
 | `--disable-dbgutil` | Debug utilities – unused in production build |
-| `--disable-avmedia` | Audio/video media support – unused in PDF conversion |
+
 | `--disable-extensions` | Extension system – unused in headless server mode |
 | `--disable-gen` | Generic (X11) VCL plugin – replaced by headless VCL |
 | `--disable-gio` | GIO (GLib I/O) – unused |
@@ -40,12 +40,12 @@ state only what it does.
 | `--disable-sdremote` | SlideShow remote control – unused |
 | `--disable-sdremote-bluetooth` | SlideShow Bluetooth remote – unused |
 | `--disable-skia` | Skia GPU rendering – eliminates libskialo.so (~5 MB) |
-| `--enable-mergelibs` | Merge smaller libraries into libmergedlo.so – reduces .so count |
+| `--disable-mergelibs` | Keep libraries as separate .so files, lets strip script remove dead components individually |
 | `--with-galleries=no` | Gallery images – unused in headless |
-| `--with-system-curl` | Use system libcurl instead of bundled copy |
+| `--without-system-curl` | Use bundled libcurl for portability (avoids system ABI mismatch at runtime) |
 | `--with-system-expat` | Use system expat instead of bundled copy |
 | `--with-system-nss` | Use system NSS instead of bundled copy |
-| `--with-system-openssl` | Use system OpenSSL instead of bundled copy |
+| `--without-system-openssl` | Use bundled OpenSSL for portability (avoids system ABI mismatch at runtime) |
 | `--with-theme=no` | UI themes – unused in headless |
 | `--without-export-validation` | Export validation tool – unused |
 | `--without-fonts` | Do not install Liberation fonts into instdir (replaced by custom fonts) |

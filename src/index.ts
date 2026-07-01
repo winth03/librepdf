@@ -76,13 +76,24 @@ export async function convert(
     const customDir = join(LO_DIR, 'share/fonts/custom');
     mkdirSync(customDir, { recursive: true });
     const paths = Array.isArray(_options.fonts) ? _options.fonts : [_options.fonts];
+    const collectFonts = (dir: string): string[] => {
+      const results: string[] = [];
+      for (const entry of readdirSync(dir)) {
+        const full = join(dir, entry);
+        const st = statSync(full);
+        if (st.isDirectory()) {
+          results.push(...collectFonts(full));
+        } else if (entry.endsWith('.ttf') || entry.endsWith('.otf')) {
+          results.push(full);
+        }
+      }
+      return results;
+    };
     for (const fp of paths) {
       const st = statSync(fp);
       if (st.isDirectory()) {
-        for (const f of readdirSync(fp)) {
-          if (f.endsWith('.ttf') || f.endsWith('.otf')) {
-            copyFileSync(join(fp, f), join(customDir, f));
-          }
+        for (const f of collectFonts(fp)) {
+          copyFileSync(f, join(customDir, basename(f)));
         }
       } else if (st.isFile()) {
         copyFileSync(fp, join(customDir, basename(fp)));
