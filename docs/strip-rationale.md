@@ -290,7 +290,12 @@ converting modern `.docx`, `.txt`, and `.html` to PDF.
 
 ### Locale data
 
-Only `en` (English) and `th` (Thai) locale data is kept. Removed:
+Only `en` (English) and `th` (Thai) locale data is kept. The kept libs
+(`liblocaledata_en.so` and `liblocaledata_th.so`) are loaded via `dlopen` at
+runtime — they are **not** linked at compile time by any `.so`, but
+docx→PDF export fails without them (`SfxBaseModel::impl_store` error 0xc10).
+
+Removed:
 
 | File | Locale coverage |
 |---|---|
@@ -300,7 +305,7 @@ Only `en` (English) and `th` (Thai) locale data is kept. Removed:
 | `share/autocorr/` | Auto-correction rules per locale |
 | `share/numbertext/` | Number-to-text conversion per locale |
 
-Total saving: ~31 MB → ~2.1 MB (after ICU data strip).
+Total saving: ~31 MB → ~15 MB (after ICU data strip, partial due to `pool.res`).
 
 ### UI configuration for removed modules
 
@@ -332,7 +337,6 @@ whose UI is not needed in headless mode.
 | Library | Reason |
 |---|---|
 | `libsvgfilterlo.so` | SVG export filter |
-| `libfilelo.so` | File system content provider |
 | `libswuilo.so` | Writer UI library (menus, dialogs, toolbars — not needed in headless) |
 
 ### Rare/unused modules

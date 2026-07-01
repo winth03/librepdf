@@ -15,7 +15,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - Docker multi-stage build on `amazonlinux:2023` (AL2023).
 - LibreOffice 26.2.4.2 — source from `core/libreoffice-26.2.4.2.tar.xz`.
 - `make` (~30 min – 2 hr on a beefy machine).
-- ICU data (`libicudata.so`) stripped post-build via `icupkg + pkgdata` in `strip-libreoffice.sh` — rebuilds `.so` with only `en` + `th` locale data, shrinking from 31 MB to ~2 MB.
+- ICU data (`libicudata.so`) stripped post-build via `icupkg + pkgdata` in `strip-libreoffice.sh` — rebuilds `.so` with only `en` + `th` locale data, shrinking from 31 MB to ~15 MB.
 - Post-build: `strip --strip-unneeded` on .so files, run `scripts/strip-libreoffice.sh` which removes DB libs, import filters, Math, Reports, Writer UI, UI config for removed modules, locale data, bundled fonts, etc.
 - Brotli-compress the stripped `instdir/` into `lo.tar.br`.
 
@@ -43,35 +43,81 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 | `scripts/smoke-test.sh` | Quick PDF-existence check (non-fatal, ignores exit code) |
 | `src/index.ts` | Library entry point |
 
-## Known safe removals in strip-libreoffice.sh
-- ICU data: `libicudata.so` rebuilt via `icupkg + pkgdata` keeping only `en` + `th` locale data (31 MB → 15 MB, partial strip due to LO 26.2 data layout)
-- DB libs: libdbalo, libfbclient, all postgres/mysql/firebird/hsqldb connectors, plus odbclo, fbintl, sdbc2, sdbtlo, dbplo, dbpool2, evoab, calclo, hsqldb, macab, ado
-- Search: libclucene (HARD LINKED — cannot remove)
-- CMIS, Math, Report builder, Personalization libs
-- Math: libsmlo.so, libsmdlo.so, smath wrapper
-- Chart: libchart2lo.so, libchart2apilo.so
-- Canvas: all canvas libs (cairo, vcl, simple, ogl, mtf, etc.)
-- Import filters: mwaw (Mac), etonyek (iWork), staroffice, wps, wpd, wpftwriter, hwp, writerperfect, t602, pdfimport, wpg, orcus, orcus-parser
-- Writer UI lib: libswuilo.so (headless safe)
-- PDFium lib: libpdfiumlo (HARD LINKED — cannot remove, used by export too)
-- Non-essential filters: libsvgfilterlo, libfilelo, librevenge, libodfgen
-- Rare/unused modules: biblo, pricinglo, solverlo, scnlo, loglo, textconversiondlgslo, deploymentgui, ucpchelp1, scriptframe, pyuno, migrationoo2/3, rptxmllo, abplo, mozbootstraplo, cmdmaillo, unopkgapp, analysislo, LanguageTool, guesslang, lnth, numbertext, spell, hyphen
-- VBA support: libvbaswobjlo.so, libmsformslo.so, libvbaobjlo.so
-- Scripting: basprov, dlgprov, protocolhandler, stringresource
-- GPU/Crypto: libepoxy.so, libgpgmepp.so, libraptor2.so, librasqal.so, librdf.so, libclewlo.so, libopencllo.so
-- Java/.NET: libjava_uno.so, javaloader, javavm, jvmaccess, jvmfwk, cli_uno, net_uno, net_bootstrap
-- Writer UI config (notebookbar, menus, toolbars, statusbar) — not needed in headless
-- UI config modules: scalc, simpess, sdraw, schart, smath, dbaccess+dbreport+dbapp, BasicIDE, sbibliography, sabpilot, swform, sweb, swxform, swreport, sglobal
-- Locale: liblocaledata_euro.so, liblocaledata_others.so, liblocaledata_es.so (only en/th kept), autocorr/, numbertext/
-- Skia: --disable-skia at configure time (eliminates libskialo.so entirely)
-- Thai locale: separate liblocaledata_th.so extracted via build-time patch (th-localedata.patch)
-- Fonts: bundled Liberation fonts removed, THSarabunNew bundled as default
-- Python scripting: LibreLogo, pyuno removed
-- Math: smath wrapper removed
-- Phase 2b libs (safe, not ldd-linked): libproxyfaclo.so, libscdlo.so, libsddlo.so, libsrtrs1.so, libcached1.so, libctllo.so, libdatelo.so, libucpimagelo.so, libucpexpand1lo.so, libucpextlo.so, libbasctllo.so, libswuilo.so, libsal_textenclo.so, libstoragefdlo.so, libswdlo.so, libbinaryurplo.so, libfsstoragelo.so, libiolo.so, liblocalebe1lo.so, libdeployment.so, libdesktopbe1lo.so, libucphier1.so, libucppkg1.so, libucptdoc1lo.so, libbootstraplo.so, liblocaledata_en.so, liblocaledata_th.so, libvbaobjlo.so
-- xpdfimport binary: program/xpdfimport + share/xpdfimport
-- Runtime keep-list (17 libs): libfilelo, libswlo, libsw_writerfilterlo, libmswordlo, libooxlo, libpdffilterlo, libfilterconfiglo, libi18npoollo, libgraphicfilterlo, libmsfilterlo, libfrmlo, libsfxlo, libsvllo, libsvtlo, libsvxlo, libsvxcorelo
-- ICU stripping: dynamic path search using `find` for LO 26.2 (hardcoded icudt77l path was wrong for ICU 78)
+## Runtime keep-list (19 libs)
+Protected from removal — includes both ldd-linked and dlopen'd libs essential for Writer→PDF:
+```
+libfilelo, libswlo, libsw_writerfilterlo, libmswordlo, libooxlo,
+libpdffilterlo, libfilterconfiglo, liblocaledata_en, liblocaledata_th,
+libi18npoollo, libgraphicfilterlo, libmsfilterlo, libfrmlo, libsfxlo,
+libsvllo, libsvtlo, libsvxlo, libsvxcorelo
+```
+
+## Removals by category
+
+### Scripting (Java, Python, VBA, LibreLogo)
+- Java bridge: `libjava_uno.so`, `javaloader`, `javavm`, `jvmaccess`, `jvmfwk`, `cli_uno`, `net_uno`, `net_bootstrap`
+- Python bridge: `libpyuno.so`, `libpythonloaderlo.so`, `program/python/`, `share/Scripts/` (LibreLogo)
+- VBA: `libvbaswobjlo.so`, `libmsformslo.so`, `libvbaobjlo.so`
+- Basic macros: `share/basic/`
+- Other: `basprov`, `dlgprov`, `protocolhandler`, `stringresource`
+
+### Database
+All DB connectors — `libdbalo`, `libfbclient`, `libpostgresql-sdbc-impllo`, `libpostgresql-sdbclo`, `libmysqlclo`, `libmysql_jdbclo`, `libfirebird_sdbclo`, `libEngine12`, `libdbaxmllo`, `libdbahsqllo`, `libdbaselo`, `libodbclo`, `libsdbc2`, `libsdbtlo`, `libdbplo`, `libdbpool2`, `libdbulo`, `libcalclo`, `libfbintllo`, plus Firebird data (`share/firebird/`)
+
+### Non-Writer Application Modules
+- **Calc:** `libsclo.so`, `libscfiltlo.so`, `libscuilo.so`
+- **Draw:** `libsdlo.so`, `libsduilo.so`
+- **Impress:** `libslideshowlo.so`, `libOGLTranslo.so`, `libPresentationMinimizerlo.so`, `libanimcorelo.so`
+- **Math:** `libsmlo.so`, `libsmdlo.so`, `smath` wrapper
+- **Chart:** `libchart2lo.so`
+- **Report builder:** `librptlo.so`, `librptuilo.so`
+
+### Legacy / Import Filters
+- **Mac:** `libmwaw-0.3-lo.so.3` (ClarisWorks)
+- **iWork:** `libetonyek-0.1-lo.so.1` (Pages, Numbers)
+- **StarOffice:** `libstaroffice-0.0-lo.so.0`
+- **WordPerfect:** `libwpd-0.10-lo.so.10`, `libwpftwriterlo.so`, `libwpftdrawlo.so`, `libwpftimpresslo.so`, `libwpftcalclo.so`, `libwriterperfectlo.so`
+- **Other:** `libhwplo.so` (HWP), `libt602filterlo.so` (T602), `libpdfimportlo.so` (PDF import)
+- **Filter infra:** `librevenge-0.0-lo.so.0`, `libodfgen-0.1-lo.so.1`, `liborcus-0.21.so.0`, `liborcus-parser-0.21.so.0`
+
+### Locale & ICU Data
+- Locale .so: keep `liblocaledata_en.so` + `liblocaledata_th.so` (dlopen'd — essential for docx→PDF, not ldd-linked); remove `liblocaledata_euro.so`, `liblocaledata_es.so`, `liblocaledata_others.so`
+- ICU: `libicudata.so` rebuilt via `icupkg + pkgdata` keeping only `en` + `th` .res files (31 MB → 15 MB — partial due to embedded `pool.res`)
+- Autocorrect: `share/autocorr/`
+- Numbertext: `share/numbertext/`
+
+### Infrastructure & Platform
+- **UCP providers:** `libucpcmis1lo.so`, `libucpimagelo.so`, `libucpexpand1lo.so`, `libucpextlo.so`, `libucphier1.so`, `libucppkg1.so`, `libucptdoc1lo.so`, `libucpchelp1.so`
+- **UNO infra:** `libreflectionlo.so`, `libinvocationlo.so`, `libintrospectionlo.so`, `libinvocadaptlo.so`, `libaffine_uno_uno.so`, `liblog_uno_uno.so`, `libsysshlo.so`
+- **Storage/IO:** `libstoragefdlo.so`, `libbinaryurplo.so`, `libfsstoragelo.so`, `libiolo.so`, `libsal_textenclo.so`, `liblocalebe1lo.so`
+- **Deployment:** `libdeployment.so`, `libdeploymentgui.so`, `libdesktopbe1lo.so`, `libbootstraplo.so`
+- **GPU/Crypto/RDF:** `libepoxy.so`, `libgpgmepp.so`, `libraptor2-lo.so`, `librasqal-lo.so`, `librdf-lo.so`, `libclewlo.so`, `libopencllo.so`
+- **Other:** `libproxyfaclo.so`, `libscdlo.so`, `libsddlo.so`, `libsrtrs1.so`, `libcached1.so`, `libctllo.so`, `libdatelo.so`, `libbasctllo.so`, `libswuilo.so`, `libswdlo.so`
+
+### Rare / Unused Modules
+`biblo`, `pricinglo`, `solverlo`, `scnlo`, `loglo`, `textconversiondlgslo`, `scriptframe`, `migrationoo2lo`, `migrationoo3lo`, `rptxmllo`, `abplo`, `mozbootstraplo`, `cmdmaillo`, `unopkgapplo`, `analysislo`, `LanguageTool`, `guesslang`, `lnth`, `numbertext`, `spell`, `hyphen`, `helplinkerlo`, `namingservicelo`, `svgfilterlo`, `evtattlo`, `fps_officelo`, `flatlo`, `forlo`, `foruilo`, `icglo`, `odfflatxmllo`, `offacclo`, `passwordcontainerlo`, `pcrlo`, `svgiolo`, `i18nsearchlo`, `embobj`, `emboleobj`, `emfiolo`
+
+### Media & UI Resources
+Gallery images, toolbar images (`images_*.zip`), color palette, canvas extras (`canvasfactorylo`, `mtfrendererlo`, `simplecanvaslo`)
+
+### Documentation & Content
+Help files (`share/help/`), man pages (`share/man/`), readmes, licenses, templates (`share/template/`), wizards (`share/config/wizard/`), pre-installed extensions (`share/extensions/`), SDK (`sdk/`), XSLT (`share/xslt/`), xpdfimport (`program/xpdfimport` + `share/xpdfimport/`)
+
+### UI Configuration
+- Config dirs for: Calc, Impress, Draw, Math, Chart, Base, dbreport, dbapp, BasicIDE, bibliography, autopilot, form/web/xml-form/report writer, global document
+- Writer UI elements (headless-safe): notebookbar, menus, toolbars, statusbar, popupmenu, dialogs
+
+### Fonts
+- Bundled Liberation fonts removed at configure time (`--without-fonts`)
+- THSarabunNew bundled as default; additional `.ttf`/`.otf` injectable at build time via `fonts/` directory
+- `share/fonts/fonts.conf` generated with `prefix="relative"` for fontconfig discovery
+
+### System Library Bundling
+- `libfontconfig.so.1`, `libxslt.so.1`, `libexslt.so.0` + transitive deps; core C libs excluded (GLIBC from host)
+
+### Hard-linked (cannot remove)
+- `libclucene.so` — full-text search, built into soffice.bin at link time
+- `libpdfiumlo.so` — used by both import (removed) and export (kept), same .so
 
 ## Known crashes (startup + shutdown)
 
@@ -137,5 +183,5 @@ fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fo
 
 ## Verification
 - `npm run test:local` converts test.docx and .txt → valid PDF.
-- Compressed bundle ~50 MB (brotli).
+- Compressed bundle ~56 MB (brotli).
 - Cold-start unpack ≤ 3 seconds.
