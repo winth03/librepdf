@@ -185,10 +185,10 @@ FROM amazonlinux:2023 AS brotli
 
 WORKDIR /tmp
 
-RUN dnf install -y brotli zip && dnf clean all
+RUN dnf install -y brotli zip pv && dnf clean all
 
 COPY --from=lobuild /tmp/lo.tar .
 
-RUN brotli --best /tmp/lo.tar
+RUN pv -f -pterb -s "$(stat -c%s /tmp/lo.tar)" /tmp/lo.tar | brotli --best -o /tmp/lo.tar.br && rm /tmp/lo.tar
 
 

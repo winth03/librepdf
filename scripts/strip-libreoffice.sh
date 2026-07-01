@@ -301,8 +301,9 @@ rm_if_not_protected \
     "$INSTDIR/program/libucphier1.so" \
     "$INSTDIR/program/libucppkg1.so" \
     "$INSTDIR/program/libucptdoc1lo.so" \
-    "$INSTDIR/program/libbootstraplo.so"
-
+    "$INSTDIR/program/libbootstraplo.so" \
+    "$INSTDIR/program/libvbaobjlo.so"
+ 
 echo "=== Stripping debug symbols from shared objects ==="
 find "$INSTDIR" \( -name '*.so' -o -name '*.so.*' -o -name '*.o' \) \
     -print0 | xargs -0 -r strip --strip-unneeded 2>/dev/null || true
@@ -483,7 +484,7 @@ locale_codes_to_remove = set()
 for item in items:
     parts = item.split('/')
     stem = parts[-1].split('.')[0] if parts else ''
-    if re.match(r'^[a-z]{2,3}(_[A-Z]{2,4})?$', stem):
+    if re.match(r'^[a-z]{2,3}(_[A-Za-z0-9]{2,8})?(_[A-Za-z0-9]{2,8})?$', stem):
         if not stem.startswith('en') and not stem.startswith('th'):
             locale_codes_to_remove.add(stem)
 

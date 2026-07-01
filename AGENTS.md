@@ -56,7 +56,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - PDFium lib: libpdfiumlo (HARD LINKED — cannot remove, used by export too)
 - Non-essential filters: libsvgfilterlo, libfilelo, librevenge, libodfgen
 - Rare/unused modules: biblo, pricinglo, solverlo, scnlo, loglo, textconversiondlgslo, deploymentgui, ucpchelp1, scriptframe, pyuno, migrationoo2/3, rptxmllo, abplo, mozbootstraplo, cmdmaillo, unopkgapp, analysislo, LanguageTool, guesslang, lnth, numbertext, spell, hyphen
-- VBA support: libvbaswobjlo.so, libmsformslo.so
+- VBA support: libvbaswobjlo.so, libmsformslo.so, libvbaobjlo.so
 - Scripting: basprov, dlgprov, protocolhandler, stringresource
 - GPU/Crypto: libepoxy.so, libgpgmepp.so, libraptor2.so, librasqal.so, librdf.so, libclewlo.so, libopencllo.so
 - Java/.NET: libjava_uno.so, javaloader, javavm, jvmaccess, jvmfwk, cli_uno, net_uno, net_bootstrap
@@ -68,9 +68,9 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - Fonts: bundled Liberation fonts removed, THSarabunNew bundled as default
 - Python scripting: LibreLogo, pyuno removed
 - Math: smath wrapper removed
-- Phase 2b libs (safe, not ldd-linked): libproxyfaclo.so, libscdlo.so, libsddlo.so, libsrtrs1.so, libcached1.so, libctllo.so, libdatelo.so, libucpimagelo.so, libucpexpand1lo.so, libucpextlo.so, libbasctllo.so, libswuilo.so, libsal_textenclo.so, libstoragefdlo.so, libswdlo.so, libbinaryurplo.so, libfsstoragelo.so, libiolo.so, liblocalebe1lo.so, libdeployment.so, libdesktopbe1lo.so, libucphier1.so, libucppkg1.so, libucptdoc1lo.so, libbootstraplo.so
+- Phase 2b libs (safe, not ldd-linked): libproxyfaclo.so, libscdlo.so, libsddlo.so, libsrtrs1.so, libcached1.so, libctllo.so, libdatelo.so, libucpimagelo.so, libucpexpand1lo.so, libucpextlo.so, libbasctllo.so, libswuilo.so, libsal_textenclo.so, libstoragefdlo.so, libswdlo.so, libbinaryurplo.so, libfsstoragelo.so, libiolo.so, liblocalebe1lo.so, libdeployment.so, libdesktopbe1lo.so, libucphier1.so, libucppkg1.so, libucptdoc1lo.so, libbootstraplo.so, liblocaledata_en.so, liblocaledata_th.so, libvbaobjlo.so
 - xpdfimport binary: program/xpdfimport + share/xpdfimport
-- Runtime keep-list (19 libs): libfilelo, libswlo, libsw_writerfilterlo, libmswordlo, libooxlo, libpdffilterlo, libfilterconfiglo, liblocaledata_en, liblocaledata_th, libi18npoollo, libgraphicfilterlo, libmsfilterlo, libfrmlo, libsfxlo, libsvllo, libsvtlo, libsvxlo, libsvxcorelo
+- Runtime keep-list (17 libs): libfilelo, libswlo, libsw_writerfilterlo, libmswordlo, libooxlo, libpdffilterlo, libfilterconfiglo, libi18npoollo, libgraphicfilterlo, libmsfilterlo, libfrmlo, libsfxlo, libsvllo, libsvtlo, libsvxlo, libsvxcorelo
 - ICU stripping: dynamic path search using `find` for LO 26.2 (hardcoded icudt77l path was wrong for ICU 78)
 
 ## Known crashes (startup + shutdown)
