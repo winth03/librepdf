@@ -43,8 +43,8 @@ state only what it does.
 | `--disable-mergelibs` | Keep libraries as separate .so files, lets strip script remove dead components individually |
 | `--with-galleries=no` | Gallery images – unused in headless |
 | `--without-system-curl` | Use bundled libcurl for portability (avoids system ABI mismatch at runtime) |
-| `--with-system-expat` | Use system expat instead of bundled copy |
-| `--with-system-nss` | Use system NSS instead of bundled copy |
+| `--without-system-expat` | Use bundled expat for portability |
+| `--without-system-nss` | Use bundled NSS for portability |
 | `--without-system-openssl` | Use bundled OpenSSL for portability (avoids system ABI mismatch at runtime) |
 | `--with-theme=no` | UI themes – unused in headless |
 | `--without-export-validation` | Export validation tool – unused |

@@ -15,7 +15,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - Docker multi-stage build on `amazonlinux:2023` (AL2023).
 - LibreOffice 26.2.4.2 — source from `core/libreoffice-26.2.4.2.tar.xz`.
 - `make` (~30 min – 2 hr on a beefy machine).
-- ICU data (`libicudata.so`) stripped post-build via `icupkg + pkgdata` in `strip-libreoffice.sh` — rebuilds `.so` with only `en` + `th` locale data, shrinking from 31 MB to ~15 MB.
+- ICU data (`libicudata.so`) filtered at build time via `ICU_DATA_FILTER_FILE` — only `en` + `th` locale data are compiled, shrinking from 31 MB to ~8 MB. The `no-python.patch` in LO's ICU tarball is removed to enable ICU's Python-based data build tool.
 - Post-build: `strip --strip-unneeded` on .so files, run `scripts/strip-libreoffice.sh` which removes DB libs, import filters, Math, Reports, Writer UI, UI config for removed modules, locale data, bundled fonts, etc.
 - Brotli-compress the stripped `instdir/` into `lo.tar.br`.
 
@@ -29,8 +29,10 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 - **Custom fonts (`./fonts/`):** LibreOffice is built with `--without-fonts`, so its built-in Liberation fonts are never installed into `instdir`. Drop your own `.ttf`/`.otf` files in `fonts/` before building; they are bundled into the stripped instdir and registered via the embedded `fonts.conf` (see "Font discovery quirk" below) — unconditionally.
 
 ## Iteration workflow
-- All post-build stripping logic lives in `scripts/strip-libreoffice.sh` — changes to this file do NOT invalidate Docker build caches (only the script → smoke → tar → br layers rebuild, ~30s).
-- Changes to Dockerfile will invalidate caches and trigger a full or partial rebuild.
+- **NEVER use `--no-cache`.** If a layer is cached, it is correct — the inputs haven't changed. Don't try to invalidate caches with trivial edits. Verify your verification instead.
+- All post-build stripping logic lives in `scripts/strip-libreoffice.sh` — changes to this file invalidate the COPY layer (file hash changed), so the script → smoke → tar → br layers rebuild (~30s).
+- Changes to `Dockerfile` will invalidate caches and trigger a full or partial rebuild.
+- Changes to `scripts/icu-data-filter.json` will invalidate the layer it's COPY'd into and trigger a rebuild from that point (patches → ICU → configure → make).
 - To extract the fresh tar: `docker compose run --rm build` (copies `lo.tar.br` to the repo root)
 
 ## Scripts & tooling
@@ -39,6 +41,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 | `Dockerfile` | Multi-stage build (AL2023 → compile → strip → brotli) |
 | `docker-compose.yml` | `docker compose build --progress=plain 2>&1 > /tmp/build.log` to build. `docker compose run --rm build` to extract `lo.tar.br` |
 | `scripts/strip-libreoffice.sh` | Post-build pruning commands (fast-iteration — Dockerfile only COPYs this script) |
+| `scripts/icu-data-filter.json` | ICU data filter — only `en` + `th` locale data compiled at build time |
 | `test/local-test.js` / `npm run test:local` | End-to-end test using the Node.js library (decompress → convert docx/txt → verify PDF) |
 | `scripts/smoke-test.sh` | Quick PDF-existence check (non-fatal, ignores exit code) |
 | `src/index.ts` | Library entry point |
@@ -82,7 +85,7 @@ All DB connectors — `libdbalo`, `libfbclient`, `libpostgresql-sdbc-impllo`, `l
 
 ### Locale & ICU Data
 - Locale .so: keep `liblocaledata_en.so` + `liblocaledata_th.so` (dlopen'd — essential for docx→PDF, not ldd-linked); remove `liblocaledata_euro.so`, `liblocaledata_es.so`, `liblocaledata_others.so`
-- ICU: `libicudata.so` rebuilt via `icupkg + pkgdata` keeping only `en` + `th` .res files (31 MB → 15 MB — partial due to embedded `pool.res`)
+- ICU: `libicudata.so` filtered via `ICU_DATA_FILTER_FILE` at configure time — only `en` + `th` .res files compiled (31 MB → ~8 MB)
 - Autocorrect: `share/autocorr/`
 - Numbertext: `share/numbertext/`
 
@@ -180,6 +183,32 @@ fontconfig does NOT scan LO's `share/fonts/` directory on Linux. LO relies on fo
 - Scope is optional. Body paragraphs wrapped at 72 chars.
 - Commit related changes together; avoid tiny granular commits.
 - Never force-push to shared branches.
+
+## Publishing a release
+
+**IMPORTANT — do NOT upload `lo.tar.br` directly.** The GitHub release artifact must be the npm pack tarball (`.tgz`), which includes compiled JS + `lo.tar.br` inside. `npm pack` runs `prepack` which calls `tsc` first.
+
+Exact steps to publish a release:
+
+```bash
+# 1. Build the Docker image and extract lo.tar.br
+docker compose build --progress=plain 2>&1 | tee /tmp/build.log
+docker compose run --rm build
+
+# 2. Build the Node.js library and create the npm pack tarball
+npm pack
+
+# 3. Commit, tag, push
+git add -A
+git commit -m "chore: bump version to X.Y.Z"
+git push origin main
+git tag vX.Y.Z && git push origin vX.Y.Z
+
+# 4. Create GitHub release with the .tgz — NOT lo.tar.br
+gh release create vX.Y.Z librepdf-X.Y.Z.tgz --title "vX.Y.Z" --notes "<notes>"
+```
+
+**Never** pass `lo.tar.br` to `gh release create`. Always use the `librepdf-X.Y.Z.tgz` file produced by `npm pack`.
 
 ## Verification
 - `npm run test:local` converts test.docx and .txt → valid PDF.

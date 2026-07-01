@@ -1,0 +1,6 @@
+{
+  "localeFilter": {
+    "filterType": "locale",
+    "includelist": ["en", "th"]
+  }
+}

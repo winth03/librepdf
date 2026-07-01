@@ -77,6 +77,12 @@ RUN curl --retry 5 --retry-delay 5 -L -o lo.tar.xz ${SOURCE_URL} && \
     mv libreoffice-${LIBREOFFICE_VERSION} libreoffice && \
     rm -f lo.tar.xz
 
+# Create non-root builder (early — caches across patch changes)
+RUN useradd -m builder && chown -R builder:builder /tmp/libreoffice
+
+USER builder
+WORKDIR /tmp/libreoffice
+
 # Apply source patches
 COPY ./scripts/th-localedata.patch /tmp/libreoffice/
 RUN cd /tmp/libreoffice && patch -p1 < th-localedata.patch && rm th-localedata.patch
@@ -93,13 +99,17 @@ RUN cd /tmp/libreoffice && patch -p1 < configitem-nullsafe.patch && rm configite
 COPY ./scripts/localedatawrapper-nullsafe.patch /tmp/libreoffice/
 RUN cd /tmp/libreoffice && patch -p1 < localedatawrapper-nullsafe.patch && rm localedatawrapper-nullsafe.patch
 
-# Create non-root builder
-RUN useradd -m builder && chown -R builder:builder /tmp/libreoffice
+# Remove no-python.patch so ICU's Python data build tool can filter locales at build time
+RUN sed -i '/no-python.patch/d' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk
 
-WORKDIR /tmp/libreoffice
+# Extract full ICU data zip (locale .txt sources) so the Python data build tool runs
+RUN sed -i '/ICU_DATA_TARBALL/ s/ data\/misc\/icudata\.rc/ -x "data\/Makefile.in" "data\/pkgdataMakefile.in"/' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk
+
+# ICU data filter: only compile en + th locale data (saves ~16 MB in libicudata.so)
+COPY ./scripts/icu-data-filter.json /tmp/icu-data-filter.json
+ENV ICU_DATA_FILTER_FILE=/tmp/icu-data-filter.json
 
 # Configure with disabled features
-USER builder
 
 # Pre-download tarballs
 RUN CC=gcc14-gcc CXX=gcc14-g++ ./configure \
@@ -138,7 +148,7 @@ RUN CC=gcc14-gcc CXX=gcc14-g++ ./configure \
     --disable-mergelibs \
     --with-galleries="no" \
     --without-system-curl \
-    --with-system-expat \
+    --without-system-expat \
     --without-system-nss \
     --without-system-openssl \
     --with-theme="no" \
@@ -173,21 +183,20 @@ RUN bash /tmp/strip-libreoffice.sh /tmp/libreoffice/instdir && \
     strings /tmp/libreoffice/instdir/program/services/services.rdb 2>/dev/null | grep -i localedata || echo "localedata in rdb: none found" && \
     ls -la /tmp/libreoffice/instdir/program/libskialo* 2>/dev/null || echo "libskialo.so: MISSING (expected with --disable-skia)"
 
-# Smoke test with GDB
-USER root
-RUN dnf install -y gdb strace && dnf clean all
-USER builder
-COPY ./scripts/smoke-test.sh /tmp/smoke-test.sh
-RUN bash /tmp/smoke-test.sh /tmp/libreoffice/instdir
-
-# Stage 2: brotli compression
-FROM amazonlinux:2023 AS brotli
+# Stage 2: brotli compression + smoke test
+FROM amazon/aws-lambda-nodejs:22 AS brotli
 
 WORKDIR /tmp
 
-RUN dnf install -y brotli zip pv && dnf clean all
+RUN dnf install -y brotli pv tar && dnf clean all
 
 COPY --from=lobuild /tmp/lo.tar .
+COPY ./scripts/smoke-test.sh /tmp/smoke-test.sh
+
+# Smoke test before compression
+RUN tar -xf lo.tar && \
+    bash /tmp/smoke-test.sh /tmp/instdir && \
+    rm -rf /tmp/instdir
 
 RUN pv -f -pterb -s "$(stat -c%s /tmp/lo.tar)" /tmp/lo.tar | brotli --best -o /tmp/lo.tar.br && rm /tmp/lo.tar
 

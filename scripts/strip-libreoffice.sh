@@ -438,126 +438,12 @@ cat > "$INSTDIR/share/fonts/fonts.conf" << 'FONTCONF'
 FONTCONF
 echo "  Created $INSTDIR/share/fonts/fonts.conf"
 
-echo "=== Stripping ICU data to en + th only ==="
-LO_ROOT=$(dirname "$INSTDIR")
-
-# Search for ICU build artifacts (locations vary by LO version)
-ICUPKG=$(find "$LO_ROOT" -name icupkg -type f 2>/dev/null | head -1)
-PKGDATA=$(find "$LO_ROOT" -name pkgdata -type f 2>/dev/null | head -1)
-LIST_FILE=$(find "$LO_ROOT" -name "icudata.lst" -type f 2>/dev/null | head -1)
-BUILDDIR=$(find "$LO_ROOT" -type d -name "icudt7[0-9][a-z]" 2>/dev/null | head -1)
-ICUPKG_INC=$(find "$LO_ROOT" -name "icupkg.inc" -type f 2>/dev/null | head -1)
-
-if [ -z "$ICUPKG" ] || [ -z "$LIST_FILE" ] || [ -z "$BUILDDIR" ]; then
-    echo "  ICU build artifacts not found, skipping ICU data strip"
-    echo "  (icupkg=$ICUPKG list=$LIST_FILE dir=$BUILDDIR)"
-else
-    echo "  Found ICU build artifacts"
-    echo "    icupkg=$ICUPKG"
-    echo "    list=$LIST_FILE"
-    echo "    dir=$BUILDDIR"
-
-    # ICU source root: icupkg is at $ICU_SOURCE/bin/icupkg
-    ICU_SOURCE=$(dirname "$(dirname "$ICUPKG")")
-
-    # Detect ICU version from build dir name (e.g. icudt78l → 78)
-    ICU_BASE=$(basename "$BUILDDIR")
-    ICU_VER=$(echo "$ICU_BASE" | sed 's/icudt//; s/[a-z]//')
-    ICU_TAG=$(echo "$ICU_BASE" | sed "s/icudt${ICU_VER}//")
-    ICU_SHORT="icudt${ICU_VER}"
-    echo "  Detected ICU version $ICU_VER (tag=$ICU_TAG, source=$ICU_SOURCE)"
-
-    ICU_PARENT=$(dirname "$BUILDDIR")      # data/out/build
-    ICU_ROOT=$(dirname "$ICU_PARENT")       # data/out
-
-    export LD_LIBRARY_PATH="${ICU_SOURCE}/lib:${ICU_SOURCE}/stubdata"
-
-    echo "  Filtering locale data..."
-    
-    python3 -c "
-import re, os, sys
-
-items = open(sys.argv[1]).read().splitlines()
-
-# Identify locale codes in .res files (only keep en* and th*)
-locale_codes_to_remove = set()
-for item in items:
-    parts = item.split('/')
-    stem = parts[-1].split('.')[0] if parts else ''
-    if re.match(r'^[a-z]{2,3}(_[A-Za-z0-9]{2,8})?(_[A-Za-z0-9]{2,8})?$', stem):
-        if not stem.startswith('en') and not stem.startswith('th'):
-            locale_codes_to_remove.add(stem)
-
-keep = []
-for item in items:
-    parts = item.split('/')
-    filename = parts[-1] if parts else item
-    stem, ext = os.path.splitext(filename)
-
-    # Keep infrastructure files (break rules, normalization, Unicode props)
-    if ext in ('.brk', '.nrm', '.icu', '.cnv', '.spp'):
-        keep.append(item)
-        continue
-    if filename in ('pool.res', 'root.res'):
-        keep.append(item)
-        continue
-
-    # Remove locale-bound .res files for non-en/non-th locales
-    if ext == '.res' and stem in locale_codes_to_remove:
-        continue
-
-    keep.append(item)
-
-open(sys.argv[2], 'w').write('\n'.join(keep) + '\n')
-print(f'  Keep {len(keep)} of {len(items)} items')
-" "$LIST_FILE" "${LIST_FILE}.keep"
-    
-    python3 -c "
-import sys, os
-keep = set(open(sys.argv[1]).read().splitlines())
-builddir = sys.argv[2]
-deleted = 0
-for root, dirs, files in os.walk(builddir):
-    for f in files:
-        rel = os.path.relpath(os.path.join(root, f), builddir)
-        if rel not in keep:
-            os.remove(os.path.join(root, f))
-            deleted += 1
-print(f'  Deleted {deleted} files from build dir')
-" "${LIST_FILE}.keep" "$BUILDDIR"
-    
-    mkdir -p /tmp/icu_so_out /tmp/icu_so_tmp
-    # pkgdata resolves list file against CWD, not -s, so cd to ICU source root
-    cp "${LIST_FILE}.keep" "${ICU_ROOT}/tmp/icudata_keep.lst"
-    (cd "$ICU_SOURCE" && \
-        "$PKGDATA" -e "$ICU_SHORT" -p "${ICU_BASE}" -m dll \
-            -s "data/out/build/${ICU_BASE}" \
-            -d /tmp/icu_so_out \
-            -T /tmp/icu_so_tmp \
-            -r "${ICU_VER}.1" \
-            -L icudata \
-            -q -c \
-            -O "data/icupkg.inc" \
-            "data/out/tmp/icudata_keep.lst")
-
-    SO_TARGET="$INSTDIR/program/libicudata.so.${ICU_VER}"
-    if [ -f "$SO_TARGET" ]; then
-        cp /tmp/icu_so_out/libicudata.so.${ICU_VER}.1 "$SO_TARGET"
-        ln -sf "libicudata.so.${ICU_VER}" "$INSTDIR/program/libicudata.so"
-        strip --strip-unneeded "$SO_TARGET"
-        echo "  Replaced $SO_TARGET ($(du -h "$SO_TARGET" | cut -f1))"
-    else
-        echo "  WARNING: $SO_TARGET not found in instdir"
-    fi
-
-    rm -rf /tmp/icu_so_out /tmp/icu_so_tmp
-    rm -f "${ICU_ROOT}/tmp/icudata_keep.lst"
-fi
+echo "=== ICU data filtering is handled at build time (ICU_DATA_FILTER_FILE) ==="
 
 echo "=== Bundling required system shared libraries ==="
 # Bundle fontconfig and libxslt plus transitive deps (exclude core C libraries)
 EXCLUDE_CORE='^(libc\.so|libm\.so|ld-linux|libdl\.so|libpthread\.so|librt\.so|libresolv\.so|libnss_|libnsl\.so|libBrokenLocale|libanl\.so|libcrypt\.so|libutil\.so|libthread_db\.so)'
-for lib in libfontconfig.so.1 libxslt.so.1 libexslt.so.0; do
+for lib in libfontconfig.so.1 libxslt.so.1 libexslt.so.0 libstdc++.so.6 libgcc_s.so.1; do
     full="/usr/lib64/$lib"
     if [ -f "$full" ]; then
         cp -a "$full"* "$INSTDIR/program/" 2>/dev/null
