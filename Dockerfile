@@ -139,7 +139,7 @@ RUN CC=gcc14-gcc CXX=gcc14-g++ ./configure \
     --with-galleries="no" \
     --without-system-curl \
     --with-system-expat \
-    --with-system-nss \
+    --without-system-nss \
     --without-system-openssl \
     --with-theme="no" \
     --without-export-validation \
