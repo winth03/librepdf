@@ -1,6 +1,8 @@
 # librepdf
 
-Stripped LibreOffice for Node.js — convert `.docx`, `.html`, `.txt` to PDF.
+LibreOffice, stripped and bundled for Node.js. Converts `.docx`, `.html`, and `.txt` to PDF — no Docker, no Gotenberg, no sidecar process to manage.
+
+> **Note:** Most of this project was done with AI assistance.
 
 ## Install
 
@@ -8,7 +10,7 @@ Stripped LibreOffice for Node.js — convert `.docx`, `.html`, `.txt` to PDF.
 npm install librepdf
 ```
 
-Requires Node.js 20+ on **Linux x86_64**.
+Node.js 20+ required. **Linux x86_64 only.**
 
 ## Usage
 
@@ -16,35 +18,34 @@ Requires Node.js 20+ on **Linux x86_64**.
 import { convert } from 'librepdf';
 import { readFileSync } from 'fs';
 
-const docx = readFileSync('report.docx');
-const pdf = await convert(docx);
-// pdf is a Buffer — save it, stream it, etc.
+const pdf = await convert(readFileSync('report.docx'));
+// returns a Buffer
 ```
 
 ### Options
 
 ```ts
+// Override format detection
 const pdf = await convert(input, { from: 'html' });
 
-// Inject custom fonts at runtime (paths to .ttf/.otf files or directories):
+// Inject fonts at runtime (.ttf/.otf files or directories)
 const pdf = await convert(input, { fonts: '/path/to/fonts/' });
 const pdf = await convert(input, { fonts: ['/path/to/fonts/', '/path/to/custom.ttf'] });
 ```
 
-The `from` option overrides automatic format detection. Supported: `docx`, `html`, `txt`.
+`from` — one of `docx`, `html`, `txt`. Only needed if auto-detection gets it wrong.
 
-The `fonts` option accepts one or more paths to font files (`.ttf`/`.otf`) or directories. They are copied into the bundled LibreOffice's font directory before conversion, making them available to fontconfig automatically.
+`fonts` — path(s) to `.ttf`/`.otf` files or directories. Copied into LO's font directory before conversion; fontconfig picks them up automatically.
 
 ## How it works
 
-The package bundles a stripped LibreOffice 26.2.4.2 installation (~56 MB brotli-compressed, targeting 50 MB). On first call, it decompresses to `/tmp/instdir` and spawns `soffice --headless --convert-to pdf`. The PDF buffer is returned; temp files are cleaned up. Only Writer (`.docx`, `.html`, `.txt`) conversion is supported — Calc and Impress modules have been stripped.
+A stripped LibreOffice 26.2.4.2 installation is bundled. On the first call it decompresses to `/tmp/instdir`, then subsequent calls reuse that. Conversion runs `soffice --headless --convert-to pdf` and returns the PDF as a Buffer. Calc and Impress are stripped — only Writer is included.
 
 ## Caveats
 
-- **Shutdown crash is fixed.** Previous builds had a benign SIGABRT on exit — the PDF was always written. Crash patches are applied at build time.
-- **Fonts**: Liberation fonts are excluded (`--without-fonts`). THSarabunNew (GPL 2.0 + font exception) is bundled. Drop additional `.ttf`/`.otf` files in `./fonts/` before building to bundle custom fonts. At runtime, pass the `fonts` option to inject font files or directories on the fly — they are copied into LO's font directory and discovered by fontconfig automatically.
-- **Locales**: Only English (US) and Thai (`th_TH`) locale data is bundled. ICU data, locale libraries, autocorrect, and numbering rules for all other locales have been stripped. This saves ~35 MB but means locale-sensitive date/number formatting for other regions may not work.
-- **Size**: The compressed bundle is ~56 MB (brotli), down from the stock 383 MB. Target is 50 MB; ongoing stripping is in progress.
+**Fonts** — Liberation fonts are not included (`--without-fonts`). THSarabunNew (GPL 2.0 + font exception) is bundled. To add more fonts permanently, drop `.ttf`/`.otf` files into `./fonts/` before building. For one-off injection, use the `fonts` runtime option.
+
+**Locales** — Only `en_US` and `th_TH` locale data is bundled. ICU data and numbering rules for other locales are stripped (~35 MB savings). Locale-sensitive date/number formatting outside those two regions may not render correctly.
 
 ## Build from source
 
