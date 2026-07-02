@@ -99,11 +99,12 @@ RUN cd /tmp/libreoffice && patch -p1 < configitem-nullsafe.patch && rm configite
 COPY ./scripts/localedatawrapper-nullsafe.patch /tmp/libreoffice/
 RUN cd /tmp/libreoffice && patch -p1 < localedatawrapper-nullsafe.patch && rm localedatawrapper-nullsafe.patch
 
-# Remove no-python.patch so ICU's Python data build tool can filter locales at build time
-RUN sed -i '/no-python.patch/d' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk
-
-# Extract full ICU data zip (locale .txt sources) so the Python data build tool runs
-RUN sed -i '/ICU_DATA_TARBALL/ s/ data\/misc\/icudata\.rc/ -x "data\/Makefile.in" "data\/pkgdataMakefile.in"/' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk
+# Remove no-python.patch so ICU's Python data build tool can filter locales at build time.
+# Extract full ICU data zip but exclude prebuilt icudt78l.dat (32 MB, all locales)
+# so ICU_DATA_FILTER_FILE takes effect instead of being overridden by the reservoir.
+RUN sed -i '/no-python.patch/d' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk \
+    && sed -i '/ICU_DATA_TARBALL/ s/ data\/misc\/icudata\.rc \\$/ -x "data\/Makefile.in" "data\/pkgdataMakefile.in" \&\& rm source\/data\/in\/icudt78l.dat \\/' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk \
+    && sed -i '/ICU_DATA_TARBALL/ s/"data\/pkgdataMakefile.in" \\$/"data\/pkgdataMakefile.in" \&\& rm source\/data\/in\/icudt78l.dat \\/' /tmp/libreoffice/external/icu/UnpackedTarball_icu.mk
 
 # ICU data filter: only compile en + th locale data (saves ~16 MB in libicudata.so)
 COPY ./scripts/icu-data-filter.json /tmp/icu-data-filter.json

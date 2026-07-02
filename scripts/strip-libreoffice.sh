@@ -438,8 +438,6 @@ cat > "$INSTDIR/share/fonts/fonts.conf" << 'FONTCONF'
 FONTCONF
 echo "  Created $INSTDIR/share/fonts/fonts.conf"
 
-echo "=== ICU data filtering is handled at build time (ICU_DATA_FILTER_FILE) ==="
-
 echo "=== Bundling required system shared libraries ==="
 # Bundle fontconfig and libxslt plus transitive deps (exclude core C libraries)
 EXCLUDE_CORE='^(libc\.so|libm\.so|ld-linux|libdl\.so|libpthread\.so|librt\.so|libresolv\.so|libnss_|libnsl\.so|libBrokenLocale|libanl\.so|libcrypt\.so|libutil\.so|libthread_db\.so)'

@@ -39,7 +39,7 @@ Strip LibreOffice to a ~50 MB compressed artifact for a Node.js library (`librep
 | File | Purpose |
 |---|---|
 | `Dockerfile` | Multi-stage build (AL2023 → compile → strip → brotli) |
-| `docker-compose.yml` | `docker compose build --progress=plain 2>&1 > /tmp/build.log` to build. `docker compose run --rm build` to extract `lo.tar.br` |
+| `docker-compose.yml` | `docker compose build --progress=plain 2>&1 | tee /tmp/build.log` to build. `docker compose run --rm build` to extract `lo.tar.br` |
 | `scripts/strip-libreoffice.sh` | Post-build pruning commands (fast-iteration — Dockerfile only COPYs this script) |
 | `scripts/icu-data-filter.json` | ICU data filter — only `en` + `th` locale data compiled at build time |
 | `test/local-test.js` / `npm run test:local` | End-to-end test using the Node.js library (decompress → convert docx/txt → verify PDF) |
