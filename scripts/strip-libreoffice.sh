@@ -102,7 +102,7 @@ echo "=== Removing debug symbol files (.o, .gdb.py) ==="
 find "$INSTDIR/program" -name '*.o' -exec rm {} \;
 find "$INSTDIR/program" -name '*-gdb.py' -exec rm {} \;
 
-echo "=== Phase 1: Removing Java, Python, VBA, GPU, DB, Math, Report builder, CMIS, import filters, rare modules ==="
+echo "=== Scripting (Java, Python, VBA, Basic) ==="
 
 # Java: entirely unused (--without-java at configure)
 rm_if_not_protected \
@@ -123,9 +123,19 @@ rm_if_not_protected \
 # VBA
 rm_if_not_protected \
     "$INSTDIR/program/libvbaswobjlo.so" \
-    "$INSTDIR/program/libmsformslo.so"
+    "$INSTDIR/program/libmsformslo.so" \
+    "$INSTDIR/program/libvbaobjlo.so"
 
-# GPU/Crypto/RDF
+# Basic, dialog, protocol, script framework
+rm_if_not_protected \
+    "$INSTDIR/program/libbasprovlo.so" \
+    "$INSTDIR/program/libbasctllo.so" \
+    "$INSTDIR/program/libdlgprovlo.so" \
+    "$INSTDIR/program/libprotocolhandlerlo.so" \
+    "$INSTDIR/program/libstringresourcelo.so" \
+    "$INSTDIR/program/libscriptframe.so"
+
+echo "=== GPU, Crypto & RDF ==="
 rm_if_not_protected \
     "$INSTDIR/program/libepoxy.so" \
     "$INSTDIR/program/libgpgmepp.so.6" \
@@ -136,7 +146,7 @@ rm_if_not_protected \
     "$INSTDIR/program/librdf-lo.so.0" \
     "$INSTDIR/program/libassuan.so.9"
 
-# Database connectors
+echo "=== Database Libraries ==="
 rm_if_not_protected \
     "$INSTDIR/program/libdbalo.so" \
     "$INSTDIR/program/libdbaxmllo.so" \
@@ -157,6 +167,8 @@ rm_if_not_protected \
     "$INSTDIR/program/libEngine12.so" \
     "$INSTDIR/program/libcalclo.so"
 
+echo "=== Non-Writer Application Libraries (Calc, Draw, Impress, Math, Chart, Report Builder) ==="
+
 # Math formula editor
 rm_if_not_protected \
     "$INSTDIR/program/libsmlo.so" \
@@ -167,31 +179,37 @@ rm_if_not_protected \
     "$INSTDIR/program/librptlo.so" \
     "$INSTDIR/program/librptuilo.so"
 
-# CMIS content management
-rm_if_not_protected "$INSTDIR/program/libucpcmis1lo.so"
-
-# Slide show, media, animation (avmedia is ldd-protected)
+# Slide show, animation (avmedia is ldd-protected)
 rm_if_not_protected \
     "$INSTDIR/program/libslideshowlo.so" \
     "$INSTDIR/program/libOGLTranslo.so" \
     "$INSTDIR/program/libPresentationMinimizerlo.so" \
     "$INSTDIR/program/libanimcorelo.so"
 
-# Canvas extras (core canvas libs are ldd-protected)
+# Calc (spreadsheet)
 rm_if_not_protected \
-    "$INSTDIR/program/libcanvasfactorylo.so" \
-    "$INSTDIR/program/libmtfrendererlo.so" \
-    "$INSTDIR/program/libsimplecanvaslo.so"
+    "$INSTDIR/program/libsclo.so" \
+    "$INSTDIR/program/libscfiltlo.so" \
+    "$INSTDIR/program/libscuilo.so" \
+    "$INSTDIR/program/libscdlo.so"
+
+# Draw (vector graphics)
+rm_if_not_protected \
+    "$INSTDIR/program/libsdlo.so" \
+    "$INSTDIR/program/libsduilo.so" \
+    "$INSTDIR/program/libcuilo.so" \
+    "$INSTDIR/program/libsddlo.so"
 
 # Chart (chart2api is ldd-protected)
 rm_if_not_protected \
     "$INSTDIR/program/libchart2lo.so"
 
-# External import filters
+echo "=== Import & Legacy Filters ==="
 rm_if_not_protected \
     "$INSTDIR/program/libmwaw-0.3-lo.so.3" \
     "$INSTDIR/program/libetonyek-0.1-lo.so.1" \
     "$INSTDIR/program/libstaroffice-0.0-lo.so.0" \
+    "$INSTDIR/program/libwps-0.4-lo.so.4" \
     "$INSTDIR/program/libhwplo.so" \
     "$INSTDIR/program/libwpftwriterlo.so" \
     "$INSTDIR/program/libwpftdrawlo.so" \
@@ -200,31 +218,85 @@ rm_if_not_protected \
     "$INSTDIR/program/libwriterperfectlo.so" \
     "$INSTDIR/program/libt602filterlo.so" \
     "$INSTDIR/program/libpdfimportlo.so" \
+    "$INSTDIR/program/libemfiolo.so" \
+    "$INSTDIR/program/libsvgiolo.so" \
+    "$INSTDIR/program/libodfflatxmllo.so" \
+    "$INSTDIR/program/libswdlo.so" \
     "$INSTDIR/program/librevenge-0.0-lo.so.0" \
     "$INSTDIR/program/libodfgen-0.1-lo.so.1" \
     "$INSTDIR/program/liborcus-0.21.so.0" \
     "$INSTDIR/program/liborcus-parser-0.21.so.0"
 
-# Rare/unused modules
+echo "=== Canvas & Media ==="
+rm_if_not_protected \
+    "$INSTDIR/program/libcanvasfactorylo.so" \
+    "$INSTDIR/program/libmtfrendererlo.so" \
+    "$INSTDIR/program/libsimplecanvaslo.so"
+
+echo "=== Locale Data (keeping en + th only) ==="
+rm_if_not_protected \
+    "$INSTDIR/program/liblocaledata_euro.so" \
+    "$INSTDIR/program/liblocaledata_es.so" \
+    "$INSTDIR/program/liblocaledata_others.so"
+
+echo "=== Infrastructure (UNO, UCP, Deployment, Platform) ==="
+
+# UNO infrastructure (reflection, invocation, introspection, adapters)
+rm_if_not_protected \
+    "$INSTDIR/program/libaffine_uno_uno.so" \
+    "$INSTDIR/program/liblog_uno_uno.so" \
+    "$INSTDIR/program/libintrospectionlo.so" \
+    "$INSTDIR/program/libinvocadaptlo.so" \
+    "$INSTDIR/program/libinvocationlo.so" \
+    "$INSTDIR/program/libreflectionlo.so" \
+    "$INSTDIR/program/libbinaryurplo.so" \
+    "$INSTDIR/program/libctllo.so" \
+    "$INSTDIR/program/libsysshlo.so" \
+    "$INSTDIR/program/libproxyfaclo.so"
+
+# UCP content providers
+rm_if_not_protected \
+    "$INSTDIR/program/libucpcmis1lo.so" \
+    "$INSTDIR/program/libucpimagelo.so" \
+    "$INSTDIR/program/libucpexpand1lo.so" \
+    "$INSTDIR/program/libucpextlo.so" \
+    "$INSTDIR/program/libucphier1.so" \
+    "$INSTDIR/program/libucppkg1.so" \
+    "$INSTDIR/program/libucptdoc1lo.so" \
+    "$INSTDIR/program/libucpchelp1.so"
+
+# Deployment & bootstrap
+rm_if_not_protected \
+    "$INSTDIR/program/libdeploymentgui.so" \
+    "$INSTDIR/program/libdeployment.so" \
+    "$INSTDIR/program/libdesktopbe1lo.so" \
+    "$INSTDIR/program/libbootstraplo.so"
+
+# Storage, I/O, locale backend
+rm_if_not_protected \
+    "$INSTDIR/program/libstoragefdlo.so" \
+    "$INSTDIR/program/libfsstoragelo.so" \
+    "$INSTDIR/program/libiolo.so" \
+    "$INSTDIR/program/libsal_textenclo.so" \
+    "$INSTDIR/program/liblocalebe1lo.so" \
+    "$INSTDIR/program/libi18nsearchlo.so" \
+    "$INSTDIR/program/libsrtrs1.so" \
+    "$INSTDIR/program/libcached1.so" \
+    "$INSTDIR/program/libdatelo.so"
+
+echo "=== Remaining Unused Libraries ==="
 rm_if_not_protected \
     "$INSTDIR/program/libbiblo.so" \
     "$INSTDIR/program/libpricinglo.so" \
     "$INSTDIR/program/libsolverlo.so" \
     "$INSTDIR/program/libscnlo.so" \
     "$INSTDIR/program/libloglo.so" \
-    "$INSTDIR/program/libdeploymentgui.so" \
-    "$INSTDIR/program/libucpchelp1.so" \
-    "$INSTDIR/program/libscriptframe.so" \
     "$INSTDIR/program/libmigrationoo2lo.so" \
     "$INSTDIR/program/libmigrationoo3lo.so" \
     "$INSTDIR/program/libabplo.so" \
     "$INSTDIR/program/libmozbootstraplo.so" \
     "$INSTDIR/program/libcmdmaillo.so" \
     "$INSTDIR/program/libanalysislo.so" \
-    "$INSTDIR/program/libbasprovlo.so" \
-    "$INSTDIR/program/libdlgprovlo.so" \
-    "$INSTDIR/program/libprotocolhandlerlo.so" \
-    "$INSTDIR/program/libstringresourcelo.so" \
     "$INSTDIR/program/libguesslanglo.so" \
     "$INSTDIR/program/liblnthlo.so" \
     "$INSTDIR/program/libnumbertextlo.so" \
@@ -233,27 +305,7 @@ rm_if_not_protected \
     "$INSTDIR/program/libspelllo.so" \
     "$INSTDIR/program/libsvgfilterlo.so" \
     "$INSTDIR/program/libhelplinkerlo.so" \
-    "$INSTDIR/program/libnamingservicelo.so"
-
-echo "=== Removing locale .so data (keeping en + th only) ==="
-rm_if_not_protected \
-    "$INSTDIR/program/liblocaledata_euro.so" \
-    "$INSTDIR/program/liblocaledata_es.so" \
-    "$INSTDIR/program/liblocaledata_others.so"
-
-echo "=== Removing Calc, Draw, Impress core libs ==="
-rm_if_not_protected \
-    "$INSTDIR/program/libsclo.so" \
-    "$INSTDIR/program/libscfiltlo.so" \
-    "$INSTDIR/program/libscuilo.so" \
-    "$INSTDIR/program/libsdlo.so" \
-    "$INSTDIR/program/libsduilo.so" \
-    "$INSTDIR/program/libcuilo.so"
-
-echo "=== Phase 2a: Additional safe removals ==="
-rm_if_not_protected \
-    "$INSTDIR/program/libaffine_uno_uno.so" \
-    "$INSTDIR/program/libemfiolo.so" \
+    "$INSTDIR/program/libnamingservicelo.so" \
     "$INSTDIR/program/libembobj.so" \
     "$INSTDIR/program/libemboleobj.so" \
     "$INSTDIR/program/libevtattlo.so" \
@@ -262,47 +314,10 @@ rm_if_not_protected \
     "$INSTDIR/program/libforlo.so" \
     "$INSTDIR/program/libforuilo.so" \
     "$INSTDIR/program/libicglo.so" \
-    "$INSTDIR/program/liblog_uno_uno.so" \
-    "$INSTDIR/program/libodfflatxmllo.so" \
     "$INSTDIR/program/liboffacclo.so" \
     "$INSTDIR/program/libpasswordcontainerlo.so" \
     "$INSTDIR/program/libpcrlo.so" \
-    "$INSTDIR/program/libsvgiolo.so" \
-    "$INSTDIR/program/libsysshlo.so" \
-    "$INSTDIR/program/libi18nsearchlo.so" \
-    "$INSTDIR/program/libintrospectionlo.so" \
-    "$INSTDIR/program/libinvocadaptlo.so" \
-    "$INSTDIR/program/libinvocationlo.so" \
-    "$INSTDIR/program/libreflectionlo.so"
-
-echo "=== Phase 2b: Application-level (non-infrastructure) removals ==="
-rm_if_not_protected \
-    "$INSTDIR/program/libproxyfaclo.so" \
-    "$INSTDIR/program/libscdlo.so" \
-    "$INSTDIR/program/libsddlo.so" \
-    "$INSTDIR/program/libsrtrs1.so" \
-    "$INSTDIR/program/libcached1.so" \
-    "$INSTDIR/program/libctllo.so" \
-    "$INSTDIR/program/libdatelo.so" \
-    "$INSTDIR/program/libucpimagelo.so" \
-    "$INSTDIR/program/libucpexpand1lo.so" \
-    "$INSTDIR/program/libucpextlo.so" \
-    "$INSTDIR/program/libbasctllo.so" \
-    "$INSTDIR/program/libsal_textenclo.so" \
-    "$INSTDIR/program/libstoragefdlo.so" \
-    "$INSTDIR/program/libswdlo.so" \
-    "$INSTDIR/program/libbinaryurplo.so" \
-    "$INSTDIR/program/libfsstoragelo.so" \
-    "$INSTDIR/program/libswuilo.so" \
-    "$INSTDIR/program/libiolo.so" \
-    "$INSTDIR/program/liblocalebe1lo.so" \
-    "$INSTDIR/program/libdeployment.so" \
-    "$INSTDIR/program/libdesktopbe1lo.so" \
-    "$INSTDIR/program/libucphier1.so" \
-    "$INSTDIR/program/libucppkg1.so" \
-    "$INSTDIR/program/libucptdoc1lo.so" \
-    "$INSTDIR/program/libbootstraplo.so" \
-    "$INSTDIR/program/libvbaobjlo.so"
+    "$INSTDIR/program/libswuilo.so"
  
 echo "=== Stripping debug symbols from shared objects ==="
 find "$INSTDIR" \( -name '*.so' -o -name '*.so.*' -o -name '*.o' \) \
@@ -461,6 +476,10 @@ for lib in libfontconfig.so.1 libxslt.so.1 libexslt.so.0 libstdc++.so.6 libgcc_s
         echo "  WARNING: $lib not found, skipping (may fail at runtime)"
     fi
 done
+
+echo "=== Removing system libxml2.so.2 (LO builds its own libxml2.so.16) ==="
+rm -f "$INSTDIR/program/libxml2.so.2"
+rm -f "$INSTDIR/program/libxml2.so.2"*
 
 echo "=== Creating soffice wrapper ==="
 cat > "$INSTDIR/program/soffice" << 'SOFFWRAP'
